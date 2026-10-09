@@ -12,3 +12,4 @@ instance/
 data/
 
 *.bak
+.neon
