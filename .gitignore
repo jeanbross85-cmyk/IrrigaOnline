@@ -1,0 +1,14 @@
+﻿.venv/
+.venv314/
+__pycache__/
+*.py[cod]
+.env
+.env.*
+!.env.example
+instance/
+*.db
+*.sqlite
+*.sqlite3
+data/
+
+*.bak

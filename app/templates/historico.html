@@ -1,0 +1,27 @@
+{% extends "base.html" %}{% block content %}
+<h1>Histórico diário</h1>
+<p>Gráficos baseados nos dados armazenados no banco.</p>
+<div class="chart-grid"><div id="eto"></div><div id="etc"></div><div id="temp"></div><div id="rain"></div><div id="depth"></div></div>
+<table><tr><th>Data</th><th>Estádio</th><th>Kc</th><th>ETo</th><th>ETc</th><th>T média</th><th>Chuva</th><th>Rn</th><th>Lâmina</th><th>Tempo</th><th>Cobertura</th><th>Status</th></tr>
+{% for r in records %}<tr>
+<td>{{ r.data.strftime("%d/%m/%Y") }}</td><td>{{ r.estadio }}</td><td>{{ "%.2f"|format(r.kc) }}</td>
+<td>{{ "%.2f"|format(r.eto_mm) }}</td><td>{{ "%.2f"|format(r.etc_mm) }}</td>
+<td>{{ "%.1f"|format(r.temperatura_media_c) }}</td><td>{{ "%.2f"|format(r.chuva_mm) }}</td>
+<td>{{ "%.2f"|format(r.rn_mj_m2_dia) }}</td><td>{{ "%.2f"|format(r.lamina_bruta_mm) }}</td>
+<td>{{ "%.1f"|format(r.tempo_irrigacao_min) }} min</td><td>{{ "%.1f"|format(r.cobertura_dados*100) }}%</td><td>{{ r.status_dados }}</td>
+</tr>{% endfor %}</table>
+<script>
+fetch('/api/historico').then(r=>r.json()).then(d=>{
+const x=d.map(v=>v.data);
+const configs=[
+['eto','ETo diária','ETo (mm/dia)',d.map(v=>v.eto)],
+['etc','ETc diária','ETc (mm/dia)',d.map(v=>v.etc)],
+['temp','Temperatura média','Temperatura (°C)',d.map(v=>v.temperatura)],
+['rain','Precipitação','Chuva (mm)',d.map(v=>v.chuva)],
+['depth','Lâmina bruta','Lâmina (mm)',d.map(v=>v.lamina)]
+];
+configs.forEach(c=>Plotly.newPlot(c[0],[{x,y:c[3],mode:'lines+markers',name:c[1]}],
+{title:c[1],xaxis:{title:'Data',type:'date'},yaxis:{title:c[2]},margin:{t:45}}));
+});
+</script>
+{% endblock %}

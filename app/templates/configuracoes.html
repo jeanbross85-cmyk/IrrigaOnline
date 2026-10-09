@@ -1,0 +1,8 @@
+{% extends "base.html" %}{% block content %}
+<h1>Configurações do protótipo</h1>
+<h2>Coeficientes de cultura (Kc)</h2>
+<table><tr><th>Estádio</th><th>Kc</th></tr>
+{% for nome, valor in kc.items() %}<tr><td>{{ nome }}</td><td>{{ valor }}</td></tr>{% endfor %}</table>
+<div class="note">Esses Kc foram herdados do código anterior, não validados independentemente neste protótipo. Confirme fontes técnicas e condições de cultivo antes de uso operacional.</div>
+<h2>Parâmetros hidráulicos</h2><p>Vazão do emissor: 0,98 L/h; 3 emissores por planta; eficiência: 90%; espaçamento: 1,00 × 0,50 m. Para alterar, edite o arquivo <code>.env</code> e reinicie a aplicação.</p>
+{% endblock %}

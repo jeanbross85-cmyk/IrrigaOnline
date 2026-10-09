@@ -1,0 +1,25 @@
+{% extends "base.html" %}{% block content %}
+<h1>Dashboard</h1>
+{% if latest %}
+<div class="cards">
+<div class="card"><span>ETo diária</span><strong>{{ "%.2f"|format(latest.eto_mm) }} mm</strong></div>
+<div class="card"><span>ETc diária</span><strong>{{ "%.2f"|format(latest.etc_mm) }} mm</strong></div>
+<div class="card"><span>Precipitação</span><strong>{{ "%.2f"|format(latest.chuva_mm) }} mm</strong></div>
+<div class="card"><span>Temperatura média</span><strong>{{ "%.1f"|format(latest.temperatura_media_c) }} °C</strong></div>
+<div class="card"><span>Lâmina bruta</span><strong>{{ "%.2f"|format(latest.lamina_bruta_mm) }} mm</strong></div>
+<div class="card"><span>Tempo estimado</span><strong>{{ "%.1f"|format(latest.tempo_irrigacao_min) }} min</strong></div>
+</div>
+<div class="alert {% if latest.status_dados == 'OK' %}ok{% else %}warning{% endif %}">
+Data mais recente: {{ latest.data.strftime("%d/%m/%Y") }}. Cobertura: {{ "%.1f"|format(latest.cobertura_dados*100) }}% — {{ latest.status_dados }}.
+{% if latest.status_dados != 'OK' %}<strong>Trate os resultados como estimativas; não automatize a irrigação com dados incompletos.</strong>{% endif %}
+</div>
+<h2>Histórico recente</h2><div id="overview"></div>
+<table><tr><th>Data</th><th>ETo</th><th>ETc</th><th>Chuva</th><th>Lâmina</th><th>Tempo</th><th>Cobertura</th></tr>
+{% for r in records %}<tr><td>{{ r.data.strftime("%d/%m/%Y") }}</td><td>{{ "%.2f"|format(r.eto_mm) }}</td><td>{{ "%.2f"|format(r.etc_mm) }}</td><td>{{ "%.2f"|format(r.chuva_mm) }}</td><td>{{ "%.2f"|format(r.lamina_bruta_mm) }}</td><td>{{ "%.1f"|format(r.tempo_irrigacao_min) }} min</td><td>{{ "%.1f"|format(r.cobertura_dados*100) }}%</td></tr>{% endfor %}</table>
+<script>fetch('/api/historico').then(r=>r.json()).then(d=>{let x=d.map(v=>v.data);Plotly.newPlot('overview',[
+{x,y:d.map(v=>v.eto),name:'ETo',mode:'lines+markers'},
+{x,y:d.map(v=>v.etc),name:'ETc',mode:'lines+markers'}
+],{title:'ETo e ETc por dia',xaxis:{title:'Data'},yaxis:{title:'mm/dia'}})});</script>
+{% else %}
+<div class="empty"><h2>Sem dados importados</h2><p>Importe um arquivo da CR1000 para começar a construir o histórico.</p><a class="button" href="/importar">Importar dados</a></div>
+{% endif %}{% endblock %}
