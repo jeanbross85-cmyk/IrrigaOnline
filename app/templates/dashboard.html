@@ -19,7 +19,7 @@ Data mais recente: {{ latest.data.strftime("%d/%m/%Y") }}. Cobertura: {{ "%.1f"|
 <script>fetch('/api/historico').then(r=>r.json()).then(d=>{let x=d.map(v=>v.data);Plotly.newPlot('overview',[
 {x,y:d.map(v=>v.eto),name:'ETo',mode:'lines+markers'},
 {x,y:d.map(v=>v.etc),name:'ETc',mode:'lines+markers'}
-],{title:'ETo e ETc por dia',xaxis:{title:'Data'},yaxis:{title:'mm/dia'}})});</script>
+],{title:'ETo e ETc por dia',xaxis:{title:'Data',tickformat:'%d/%m/%Y'},yaxis:{title:'mm/dia'}})});</script>
 {% else %}
 <div class="empty"><h2>Sem dados importados</h2><p>Importe um arquivo da CR1000 para começar a construir o histórico.</p><a class="button" href="/importar">Importar dados</a></div>
 {% endif %}{% endblock %}
