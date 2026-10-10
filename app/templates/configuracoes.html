@@ -3,8 +3,50 @@
 <h2>Coeficientes de cultura (Kc)</h2>
 <table><tr><th>Estádio</th><th>Kc</th></tr>
 {% for nome, valor in kc.items() %}<tr><td>{{ nome }}</td><td>{{ valor }}</td></tr>{% endfor %}</table>
-<div class="note">Esses Kc foram herdados do código anterior, não validados independentemente neste protótipo. Confirme fontes técnicas e condições de cultivo antes de uso operacional.</div>
+<div class="note">
+<strong>Nota técnica:</strong> Os coeficientes de cultura (Kc) utilizados nesta aplicação foram adaptados do estudo <em>Determinação da demanda hídrica do quiabeiro em Campos dos Goytacazes, RJ</em>, de Herval Martinho Ferreira Paes, Barbara dos Santos Esteves e Elias Fernandes de Sousa, publicado na <em>Revista Ciência Agronômica</em>, v. 43, n. 2, p. 256-261, 2012.
+<strong>Referência:</strong> <a href="https://doi.org/10.1590/S1806-66902012000200007" target="_blank" rel="noopener noreferrer">https://doi.org/10.1590/S1806-66902012000200007</a>.
+A adequação dos valores depende da cultura, do estágio fenológico e das condições de cultivo.
+</div>
 <h2>Parâmetros hidráulicos</h2><p>Vazão do emissor: 0,98 L/h; 3 emissores por planta; eficiência: 90%; espaçamento: 1,00 × 0,50 m. Para alterar, edite o arquivo <code>.env</code> e reinicie a aplicação.</p>
+
+<h2>Metodologia de cálculo da irrigação</h2>
+<p>O cálculo transforma os dados meteorológicos em uma estimativa da lâmina de irrigação e do tempo necessário para aplicação da água.</p>
+
+<h3>1. Evapotranspiração de referência (ETo)</h3>
+<p>A ETo é calculada pelo método FAO-56 Penman-Monteith, com as variáveis meteorológicas utilizadas pelo aplicativo. O resultado é expresso em mm/dia.</p>
+
+<h3>2. Evapotranspiração da cultura (ETc)</h3>
+<p>A ETc é estimada pela ETo multiplicada pelo coeficiente de cultura do estágio selecionado:</p>
+<p><code>ETc = ETo × Kc</code></p>
+
+<h3>3. Chuva efetiva e necessidade líquida</h3>
+<p>O método simplificado limita a chuva efetiva entre zero e a ETc diária:</p>
+<p><code>Pef = min(max(P, 0), ETc)</code></p>
+<p>A necessidade líquida é calculada por:</p>
+<p><code>Nliq = max(0, ETc - Pef)</code></p>
+
+<h3>4. Lâmina bruta de irrigação</h3>
+<p>A necessidade líquida é corrigida pela eficiência de aplicação de 90%:</p>
+<p><code>Lb = Nliq / 0,90</code></p>
+
+<h3>5. Volume de água por planta</h3>
+<p>O espaçamento de 1,00 × 0,50 m corresponde a 0,50 m² por planta. Como 1 mm equivale a 1 L/m²:</p>
+<p><code>Volume (L/planta) = Lb (mm) × 0,50 (m²/planta)</code></p>
+
+<h3>6. Tempo de irrigação</h3>
+<p>São considerados três emissores por planta, com vazão nominal de 0,98 L/h cada, totalizando 2,94 L/h por planta:</p>
+<p><code>Tempo (min) = [Volume (L/planta) / 2,94 (L/h)] × 60</code></p>
+
+<h3>Parâmetros e limitações</h3>
+<ul>
+<li>Eficiência de aplicação: 90%.</li>
+<li>Três emissores por planta, com vazão nominal de 0,98 L/h cada.</li>
+<li>Espaçamento: 1,00 × 0,50 m; área por planta: 0,50 m².</li>
+<li>A fração de área molhada de 0,32, observada em campo, não é utilizada para reduzir diretamente a ETc neste método.</li>
+<li>A chuva efetiva é estimada por uma regra simplificada. O cálculo não representa diretamente o armazenamento de água no solo, o escoamento, a drenagem ou a distribuição espacial da umidade.</li>
+<li>O tempo é uma estimativa baseada na vazão nominal; pressão e condições reais de funcionamento podem alterar a vazão efetiva.</li>
+</ul>
 
 <hr>
 <h2>Sobre o IrrigaOnline</h2>
