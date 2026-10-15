@@ -1,56 +1,272 @@
-{% extends "base.html" %}{% block content %}
-<h1>Configurações do protótipo</h1>
+
+{% extends "base.html" %}
+{% block content %}
+
+<h1>Configurações do IrrigaOnline</h1>
+
 <h2>Coeficientes de cultura (Kc)</h2>
-<table><tr><th>Estádio</th><th>Kc</th></tr>
-{% for nome, valor in kc.items() %}<tr><td>{{ nome }}</td><td>{{ valor }}</td></tr>{% endfor %}</table>
+
+<table>
+    <tr>
+        <th>Estádio fenológico</th>
+        <th>Kc</th>
+    </tr>
+    {% for nome, valor in kc.items() %}
+    <tr>
+        <td>{{ nome }}</td>
+        <td>{{ valor }}</td>
+    </tr>
+    {% endfor %}
+</table>
+
 <div class="note">
-<strong>Nota técnica:</strong> Os coeficientes de cultura (Kc) utilizados nesta aplicação foram adaptados do estudo <em>Determinação da demanda hídrica do quiabeiro em Campos dos Goytacazes, RJ</em>, de Herval Martinho Ferreira Paes, Barbara dos Santos Esteves e Elias Fernandes de Sousa, publicado na <em>Revista Ciência Agronômica</em>, v. 43, n. 2, p. 256-261, 2012.
-<strong>Referência:</strong> <a href="https://doi.org/10.1590/S1806-66902012000200007" target="_blank" rel="noopener noreferrer">https://doi.org/10.1590/S1806-66902012000200007</a>.
-A adequação dos valores depende da cultura, do estágio fenológico e das condições de cultivo.
+    <strong>Nota técnica:</strong>
+    Os coeficientes de cultura utilizados nesta aplicação foram adaptados do estudo
+    <em>Determinação da demanda hídrica do quiabeiro em Campos dos Goytacazes, RJ</em>,
+    de Herval Martinho Ferreira Paes, Barbara dos Santos Esteves e Elias Fernandes de Sousa,
+    publicado na <em>Revista Ciência Agronômica</em>, v. 43, n. 2, p. 256–261, 2012.
+
+    <p>
+        <strong>Referência:</strong>
+        <a href="https://doi.org/10.1590/S1806-66902012000200007"
+           target="_blank" rel="noopener noreferrer">
+            https://doi.org/10.1590/S1806-66902012000200007
+        </a>
+    </p>
+
+    Os valores devem ser avaliados considerando a cultura, o estádio fenológico,
+    as condições ambientais e o manejo adotado.
 </div>
-<h2>Parâmetros hidráulicos</h2><p>Vazão do emissor: 0,98 L/h; 3 emissores por planta; eficiência: 90%; espaçamento: 1,00 × 0,50 m. Para alterar, edite o arquivo <code>.env</code> e reinicie a aplicação.</p>
+
+<h2>Parâmetros hidráulicos e de cultivo</h2>
+
+<ul>
+    <li>Vazão nominal de cada emissor: 0,98 L/h.</li>
+    <li>Emissores por planta: 3.</li>
+    <li>Vazão nominal total por planta: 2,94 L/h.</li>
+    <li>Eficiência de aplicação configurada: 90%.</li>
+    <li>Espaçamento entre linhas: 1,00 m.</li>
+    <li>Espaçamento entre plantas: 0,50 m.</li>
+    <li>Área geométrica por planta: 0,50 m².</li>
+    <li>Fração de área molhada observada em campo (Kl): 0,32.</li>
+    <li>Área efetiva utilizada no cálculo do volume: 0,16 m²/planta, conforme configuração padrão.</li>
+    <li>Altitude padrão: 220 m.</li>
+    <li>Altura de medição do vento padrão: 2 m.</li>
+</ul>
+
+<p>
+    Os parâmetros definidos por variáveis de ambiente podem ser alterados no arquivo
+    <code>.env</code>. Após a alteração, reinicie a aplicação. A área efetiva por planta
+    é configurada pela variável <code>AREA_EFETIVA_POR_PLANTA_M2</code>.
+</p>
 
 <h2>Metodologia de cálculo da irrigação</h2>
-<p>O cálculo transforma os dados meteorológicos em uma estimativa da lâmina de irrigação e do tempo necessário para aplicação da água.</p>
+
+<p>
+    O IrrigaOnline processa os dados meteorológicos, estima a evapotranspiração de
+    referência e calcula dois cenários de necessidade de irrigação: um com o fator
+    <code>Kl</code> e outro sem esse fator. Os resultados são estimativas para apoiar
+    o manejo e devem ser interpretados considerando a qualidade dos dados e as
+    condições reais do sistema de irrigação.
+</p>
 
 <h3>1. Evapotranspiração de referência (ETo)</h3>
-<p>A ETo é calculada pelo método FAO-56 Penman-Monteith, com as variáveis meteorológicas utilizadas pelo aplicativo. O resultado é expresso em mm/dia.</p>
+
+<p>
+    A ETo é estimada pelo método FAO-56 Penman–Monteith, utilizando temperatura
+    média, máxima e mínima do ar, umidade relativa máxima e mínima, velocidade do
+    vento, saldo de radiação e altitude.
+</p>
+
+<p>
+    A equação geral utilizada é:
+</p>
+
+<p><code>ETo = [0,408 × Δ × (Rn − G) + γ × (900 / (T + 273)) × u₂ × (es − ea)] / [Δ + γ × (1 + 0,34 × u₂)]</code></p>
+
+<p>
+    Na implementação atual, o fluxo de calor no solo (G) é considerado zero para
+    o cálculo diário. A pressão atmosférica e a constante psicrométrica são
+    estimadas a partir da altitude. Quando a altura de medição do vento difere
+    de 2 m, a velocidade é convertida para a altura de referência de 2 m.
+</p>
+
+<p>
+    Os registros meteorológicos são agregados por dia. A radiação líquida é
+    convertida de W/m² para MJ/m²/dia considerando intervalos de 10 minutos.
+    A chuva é somada a partir dos registros do dia. Portanto, a consistência dos
+    intervalos, das unidades e dos dados da estação é fundamental.
+</p>
 
 <h3>2. Evapotranspiração da cultura (ETc)</h3>
-<p>A ETc é estimada pela ETo multiplicada pelo coeficiente de cultura do estágio selecionado:</p>
-<p><code>ETc = ETo × Kc</code></p>
+
+<p>
+    O coeficiente de cultura correspondente ao estádio selecionado é aplicado
+    à ETo. O sistema calcula duas estimativas:
+</p>
+
+<p><code>ETc com Kl = ETo × Kc × Kl</code></p>
+<p><code>ETc sem Kl = ETo × Kc</code></p>
+
+<p>
+    No cenário com Kl, utiliza-se o valor padrão de <code>Kl = 0,32</code>,
+    correspondente à fração de área molhada observada em campo e adotada como
+    fator de ajuste neste método operacional. No cenário sem Kl, esse fator
+    não é aplicado.
+</p>
+
+<p>
+    A aplicação de Kl é uma escolha metodológica deste sistema. Ela não deve
+    ser confundida com uma validação universal de que a evapotranspiração da
+    cultura seja sempre igual à ETc multiplicada pela fração molhada. O manejo
+    deve ser ajustado conforme a cultura, o sistema de irrigação e as condições
+    observadas em campo.
+</p>
 
 <h3>3. Chuva efetiva e necessidade líquida</h3>
-<p>O método simplificado limita a chuva efetiva entre zero e a ETc diária:</p>
+
+<p>
+    Para cada cenário, a chuva efetiva é limitada entre zero e a ETc calculada:
+</p>
+
 <p><code>Pef = min(max(P, 0), ETc)</code></p>
-<p>A necessidade líquida é calculada por:</p>
-<p><code>Nliq = max(0, ETc - Pef)</code></p>
+
+<p>
+    A necessidade líquida de irrigação é então estimada por:
+</p>
+
+<p><code>Nliq = max(0, ETc − Pef)</code></p>
+
+<p>
+    Essa é uma regra simplificada. Ela não calcula diretamente a infiltração,
+    o escoamento superficial, o armazenamento de água no solo ou a contribuição
+    da chuva para períodos posteriores.
+</p>
 
 <h3>4. Lâmina bruta de irrigação</h3>
-<p>A necessidade líquida é corrigida pela eficiência de aplicação de 90%:</p>
+
+<p>
+    A necessidade líquida é corrigida pela eficiência de aplicação configurada:
+</p>
+
+<p><code>Lb = Nliq / Eficiência</code></p>
+
+<p>
+    Com eficiência de 90%, a expressão é:
+</p>
+
 <p><code>Lb = Nliq / 0,90</code></p>
 
+<p>
+    A lâmina bruta representa a quantidade estimada a aplicar para atender à
+    necessidade líquida considerada, com correção pela eficiência configurada.
+    O resultado é expresso em milímetros.
+</p>
+
 <h3>5. Volume de água por planta</h3>
-<p>O espaçamento de 1,00 × 0,50 m corresponde a 0,50 m² por planta. Como 1 mm equivale a 1 L/m²:</p>
-<p><code>Volume (L/planta) = Lb (mm) × 0,50 (m²/planta)</code></p>
+
+<p>
+    O volume é calculado pela multiplicação da lâmina bruta pela área efetiva
+    configurada por planta. A conversão utiliza a equivalência entre milímetros
+    de lâmina e litros por metro quadrado:
+</p>
+
+<p><code>Volume (L/planta) = Lb (mm) × Área efetiva (m²/planta)</code></p>
+
+<p>
+    Com a configuração padrão de 0,16 m² por planta:
+</p>
+
+<p><code>Volume (L/planta) = Lb × 0,16</code></p>
+
+<p>
+    A área efetiva configurada é diferente da área geométrica de 0,50 m² por
+    planta. O valor de 0,16 m² corresponde à configuração operacional adotada
+    e é utilizado nos dois cenários, com e sem Kl. Assim, o fator Kl aplicado
+    à ETc e a área efetiva utilizada no cálculo do volume são parâmetros
+    distintos na implementação.
+</p>
 
 <h3>6. Tempo de irrigação</h3>
-<p>São considerados três emissores por planta, com vazão nominal de 0,98 L/h cada, totalizando 2,94 L/h por planta:</p>
+
+<p>
+    O tempo é estimado a partir do volume por planta e da vazão nominal total
+    dos três emissores:
+</p>
+
+<p><code>Vazão por planta = 3 × 0,98 = 2,94 L/h</code></p>
+
 <p><code>Tempo (min) = [Volume (L/planta) / 2,94 (L/h)] × 60</code></p>
 
-<h3>Parâmetros e limitações</h3>
+<p>
+    O resultado é uma estimativa. Pressão, entupimentos, variação de vazão,
+    manutenção e uniformidade de distribuição podem alterar o tempo efetivamente
+    necessário em campo.
+</p>
+
+<h3>7. Comparação dos cenários com e sem Kl</h3>
+
+<table>
+    <tr>
+        <th>Indicador</th>
+        <th>Com Kl</th>
+        <th>Sem Kl</th>
+    </tr>
+    <tr>
+        <td>ETc</td>
+        <td>ETo × Kc × 0,32</td>
+        <td>ETo × Kc</td>
+    </tr>
+    <tr>
+        <td>Chuva efetiva</td>
+        <td>Limitada à ETc do cenário</td>
+        <td>Limitada à ETc do cenário</td>
+    </tr>
+    <tr>
+        <td>Lâmina bruta</td>
+        <td>Necessidade líquida / eficiência</td>
+        <td>Necessidade líquida / eficiência</td>
+    </tr>
+    <tr>
+        <td>Volume por planta</td>
+        <td>Lâmina × área efetiva</td>
+        <td>Lâmina × área efetiva</td>
+    </tr>
+    <tr>
+        <td>Tempo de irrigação</td>
+        <td>Volume / vazão × 60</td>
+        <td>Volume / vazão × 60</td>
+    </tr>
+</table>
+
+<p>
+    A diferença entre os cenários permite avaliar como a aplicação do fator Kl
+    altera as estimativas de ETc, lâmina bruta, volume e tempo. Quando a chuva
+    efetiva iguala a ETc de um cenário, a necessidade líquida e o tempo calculado
+    nesse cenário podem ser zero.
+</p>
+
+<h3>8. Qualidade dos dados e limitações</h3>
+
 <ul>
-<li>Eficiência de aplicação: 90%.</li>
-<li>Três emissores por planta, com vazão nominal de 0,98 L/h cada.</li>
-<li>Espaçamento: 1,00 × 0,50 m; área por planta: 0,50 m².</li>
-<li>A fração de área molhada de 0,32, observada em campo, não é utilizada para reduzir diretamente a ETc neste método.</li>
-<li>A chuva efetiva é estimada por uma regra simplificada. O cálculo não representa diretamente o armazenamento de água no solo, o escoamento, a drenagem ou a distribuição espacial da umidade.</li>
-<li>O tempo é uma estimativa baseada na vazão nominal; pressão e condições reais de funcionamento podem alterar a vazão efetiva.</li>
+    <li>A estimativa diária de ETo depende da disponibilidade e qualidade das variáveis meteorológicas.</li>
+    <li>A soma da chuva pressupõe que os registros representem incrementos por intervalo, e não um acumulado repetido.</li>
+    <li>A conversão do saldo de radiação pressupõe registros em W/m² com intervalos de 10 minutos.</li>
+    <li>O método não substitui o monitoramento da umidade do solo, da drenagem ou da resposta das plantas.</li>
+    <li>A eficiência de aplicação, a área efetiva e a vazão devem refletir as condições reais do sistema.</li>
+    <li>Os resultados devem ser utilizados como apoio à decisão e avaliados junto às observações de campo.</li>
 </ul>
 
 <hr>
+
 <h2>Sobre o IrrigaOnline</h2>
-<p>Aplicação desenvolvida ao longo da disciplina de Fundamentos de Engenharia de Irrigação, do Programa de Pós-Graduação em Engenharia Agrícola da Universidade Federal do Recôncavo da Bahia (UFRB).</p>
+
+<p>
+    Aplicação desenvolvida no contexto da disciplina de Fundamentos de Engenharia
+    de Irrigação, do Programa de Pós-Graduação em Engenharia Agrícola da
+    Universidade Federal do Recôncavo da Bahia (UFRB).
+</p>
+
 <p><strong>Ano:</strong> 2026</p>
 <p><strong>Desenvolvedor:</strong> Jean Rodrigues</p>
 
