@@ -1,27 +1,323 @@
-{% extends "base.html" %}{% block content %}
+
+{% extends "base.html" %}
+{% block content %}
+
 <h1>Histórico diário</h1>
-<p>Gráficos baseados nos dados armazenados no banco.</p>
-<div class="chart-grid"><div id="eto"></div><div id="etc"></div><div id="temp"></div><div id="rain"></div><div id="depth"></div></div>
-<table><tr><th>Data</th><th>Estádio</th><th>Kc</th><th>ETo</th><th>ETc</th><th>T média</th><th>Chuva</th><th>Rn</th><th>Lâmina</th><th>Tempo</th><th>Cobertura</th><th>Status</th></tr>
-{% for r in records %}<tr>
-<td>{{ r.data.strftime("%d/%m/%Y") }}</td><td>{{ r.estadio }}</td><td>{{ "%.2f"|format(r.kc) }}</td>
-<td>{{ "%.2f"|format(r.eto_mm) }}</td><td>{{ "%.2f"|format(r.etc_mm) }}</td>
-<td>{{ "%.1f"|format(r.temperatura_media_c) }}</td><td>{{ "%.2f"|format(r.chuva_mm) }}</td>
-<td>{{ "%.2f"|format(r.rn_mj_m2_dia) }}</td><td>{{ "%.2f"|format(r.lamina_bruta_mm) }}</td>
-<td>{{ "%.1f"|format(r.tempo_irrigacao_min) }} min</td><td>{{ "%.1f"|format(r.cobertura_dados*100) }}%</td><td>{{ r.status_dados }}</td>
-</tr>{% endfor %}</table>
+<p>Dados meteorológicos e comparação dos cenários de irrigação com e sem o fator de área molhada (Kl).</p>
+<div style="margin: 16px 0;">
+    <a
+        href="/historico/exportar.xlsx"
+        style="
+            display: inline-block;
+            padding: 10px 16px;
+            background-color: #245a45;
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: 600;
+        "
+    >
+        &#128229; Baixar histórico em Excel (.xlsx)
+    </a>
+</div>
+
+<div class="chart-grid">
+    <div id="eto"></div>
+    <div id="etc"></div>
+    <div id="temp"></div>
+    <div id="rain"></div>
+    <div id="depth"></div>
+    <div id="depth_sem_kl"></div>
+    <div id="time"></div>
+    <div id="time_sem_kl"></div>
+    <div id="drainage" style="grid-column: 1 / -1;"></div>
+</div>
+
+<h2>Comparação dos cenários de irrigação</h2>
+<p>
+    Os resultados com Kl consideram o fator de área molhada configurado.
+    Os resultados sem Kl são apresentados como cenário alternativo.
+    Traços indicam valores ainda não registrados no banco.
+</p>
+
+<div style="overflow-x:auto;">
+<table>
+    <thead>
+        <tr>
+            <th rowspan="2">Data</th>
+            <th rowspan="2">Estádio</th>
+            <th rowspan="2">Kc</th>
+            <th rowspan="2">ETo (mm)</th>
+            <th colspan="2">ETc (mm)</th>
+            <th rowspan="2">T média (°C)</th>
+            <th rowspan="2">Chuva (mm)</th>
+            <th rowspan="2">Rn</th>
+            <th colspan="2">Lâmina bruta (mm)</th>
+            <th colspan="2">Volume por planta (L)</th>
+            <th colspan="2">Tempo (min)</th>
+            <th rowspan="2">Cobertura</th>
+            <th rowspan="2">Status</th>
+        </tr>
+        <tr>
+            <th>Com Kl</th>
+            <th>Sem Kl</th>
+            <th>Com Kl</th>
+            <th>Sem Kl</th>
+            <th>Com Kl</th>
+            <th>Sem Kl</th>
+            <th>Com Kl</th>
+            <th>Sem Kl</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for r in records %}
+        <tr>
+            <td>{{ r.data.strftime("%d/%m/%Y") }}</td>
+            <td>{{ r.estadio }}</td>
+            <td>{{ "%.2f"|format(r.kc) }}</td>
+            <td>{{ "%.2f"|format(r.eto_mm) }}</td>
+
+            <td>
+                {% if r.etc_com_kl_mm is not none %}
+                    {{ "%.2f"|format(r.etc_com_kl_mm) }}
+                {% else %}—{% endif %}
+            </td>
+            <td>
+                {% if r.etc_sem_kl_mm is not none %}
+                    {{ "%.2f"|format(r.etc_sem_kl_mm) }}
+                {% else %}—{% endif %}
+            </td>
+
+            <td>
+                {% if r.temperatura_media_c is not none %}
+                    {{ "%.1f"|format(r.temperatura_media_c) }}
+                {% else %}—{% endif %}
+            </td>
+            <td>
+                {% if r.chuva_mm is not none %}
+                    {{ "%.2f"|format(r.chuva_mm) }}
+                {% else %}—{% endif %}
+            </td>
+            <td>
+                {% if r.rn_mj_m2_dia is not none %}
+                    {{ "%.2f"|format(r.rn_mj_m2_dia) }}
+                {% else %}—{% endif %}
+            </td>
+
+            <td>
+                {% if r.lamina_bruta_com_kl_mm is not none %}
+                    {{ "%.2f"|format(r.lamina_bruta_com_kl_mm) }}
+                {% else %}—{% endif %}
+            </td>
+            <td>
+                {% if r.lamina_bruta_sem_kl_mm is not none %}
+                    {{ "%.2f"|format(r.lamina_bruta_sem_kl_mm) }}
+                {% else %}—{% endif %}
+            </td>
+
+            <td>
+                {% if r.volume_planta_com_kl_l is not none %}
+                    {{ "%.3f"|format(r.volume_planta_com_kl_l) }}
+                {% else %}—{% endif %}
+            </td>
+            <td>
+                {% if r.volume_planta_sem_kl_l is not none %}
+                    {{ "%.3f"|format(r.volume_planta_sem_kl_l) }}
+                {% else %}—{% endif %}
+            </td>
+
+            <td>
+                {% if r.tempo_irrigacao_com_kl_min is not none %}
+                    {{ "%.2f"|format(r.tempo_irrigacao_com_kl_min) }}
+                {% else %}—{% endif %}
+            </td>
+            <td>
+                {% if r.tempo_irrigacao_sem_kl_min is not none %}
+                    {{ "%.2f"|format(r.tempo_irrigacao_sem_kl_min) }}
+                {% else %}—{% endif %}
+            </td>
+
+            <td>
+                {% if r.cobertura_dados is not none %}
+                    {{ "%.1f"|format(r.cobertura_dados * 100) }}%
+                {% else %}—{% endif %}
+            </td>
+            <td>{{ r.status_dados or "—" }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+</div>
+
 <script>
-fetch('/api/historico').then(r=>r.json()).then(d=>{
-const x=d.map(v=>v.data);
-const configs=[
-['eto','ETo diária','ETo (mm/dia)',d.map(v=>v.eto)],
-['etc','ETc diária','ETc (mm/dia)',d.map(v=>v.etc)],
-['temp','Temperatura média','Temperatura (°C)',d.map(v=>v.temperatura)],
-['rain','Precipitação','Chuva (mm)',d.map(v=>v.chuva)],
-['depth','Lâmina bruta','Lâmina (mm)',d.map(v=>v.lamina)]
-];
-configs.forEach(c=>Plotly.newPlot(c[0],[{x,y:c[3],mode:'lines+markers',name:c[1]}],
-{title:c[1],xaxis:{title:'Data',type:'date'},yaxis:{title:c[2]},margin:{t:45}}));
-});
+/* Gráfico da umidade na zona drenante */
+fetch('/api/drenagem')
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Não foi possível carregar as medições de drenagem.');
+        }
+        return response.json();
+    })
+    .then(registros => {
+        const elemento = document.getElementById('drainage');
+        if (!elemento) return;
+
+        if (registros.length === 0) {
+            elemento.innerHTML =
+                '<p>Ainda não existem medições de drenagem registradas.</p>';
+            return;
+        }
+
+        Plotly.newPlot(
+            elemento,
+            [{
+                x: registros.map(r => r.data),
+                y: registros.map(r => r.umidade_volumetrica),
+                customdata: registros.map(r => r.leitura_percentual),
+                mode: 'markers+lines',
+                type: 'scatter',
+                name: 'Umidade volumétrica',
+                hovertemplate:
+                    'Data: %{x}<br>' +
+                    'Umidade volumétrica: %{y:.4f} m³/m³<br>' +
+                    'Leitura do sensor: %{customdata:.2f}%' +
+                    '<extra></extra>'
+            }],
+            {
+                title: 'Umidade na zona drenante',
+                xaxis: { title: 'Data da medição', type: 'date' },
+                yaxis: {
+                    title: 'Umidade volumétrica (m³/m³)',
+                    rangemode: 'tozero'
+                },
+                margin: { t: 50, r: 25, b: 60, l: 75 },
+                autosize: true
+            },
+            { responsive: true }
+        );
+    })
+    .catch(error => {
+        console.error('Erro ao carregar drenagem:', error);
+        document.getElementById('drainage').innerHTML =
+            '<p>Não foi possível carregar o gráfico de drenagem.</p>';
+    });
+
+/* Gráficos meteorológicos e de irrigação */
+fetch('/api/historico')
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Não foi possível carregar o histórico.');
+        }
+        return response.json();
+    })
+    .then(d => {
+        const x = d.map(v => v.data);
+
+        const configs = [
+            ['eto', 'ETo diária', 'ETo (mm/dia)', d.map(v => v.eto)],
+            ['etc', 'ETc diária', 'ETc (mm/dia)', d.map(v => v.etc)],
+            ['temp', 'Temperatura média', 'Temperatura (°C)', d.map(v => v.temperatura)],
+            ['rain', 'Precipitação', 'Chuva (mm)', d.map(v => v.chuva)],
+            ['depth', 'Lâmina bruta com Kl', 'Lâmina (mm)', d.map(v => v.lamina)],
+            ['depth_sem_kl', 'Lâmina bruta sem Kl', 'Lâmina (mm)', d.map(v => v.lamina_bruta_sem_kl_mm)],
+            ['time', 'Tempo de irrigação com Kl', 'Tempo (min)', d.map(v => v.tempo)],
+            ['time_sem_kl', 'Tempo de irrigação sem Kl', 'Tempo (min)', d.map(v => v.tempo_irrigacao_sem_kl_min)]
+        ];
+
+        configs.forEach(c => {
+            const elemento = document.getElementById(c[0]);
+            if (!elemento) return;
+
+            Plotly.newPlot(
+                elemento,
+                [{
+                    x: x,
+                    y: c[3],
+                    mode: 'lines+markers',
+                    name: c[1],
+                    connectgaps: false
+                }],
+                {
+                    title: c[1],
+                    xaxis: { title: 'Data', type: 'date' },
+                    yaxis: { title: c[2] },
+                    margin: { t: 45 },
+                    autosize: true
+                },
+                { responsive: true }
+            );
+        });
+    })
+    .catch(error => {
+        console.error('Erro ao carregar gráficos:', error);
+    });
 </script>
+
+<h2>Histórico de umidade na zona drenante</h2>
+
+<div style="overflow-x:auto;">
+    <table>
+        <thead>
+            <tr>
+                <th>Data</th>
+                <th>Leitura do sensor (%)</th>
+                <th>Umidade volumétrica (m³/m³)</th>
+            </tr>
+        </thead>
+        <tbody id="drenagem-tbody">
+            <tr>
+                <td colspan="3">Carregando medições...</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+<script>
+fetch('/api/drenagem')
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Falha ao carregar a tabela de drenagem.');
+        }
+        return response.json();
+    })
+    .then(registros => {
+        const tbody = document.getElementById('drenagem-tbody');
+        if (!tbody) return;
+
+        tbody.innerHTML = '';
+
+        if (registros.length === 0) {
+            tbody.innerHTML =
+                '<tr><td colspan="3">Nenhuma medição registrada.</td></tr>';
+            return;
+        }
+
+        registros.forEach(r => {
+            const tr = document.createElement('tr');
+
+            const data = document.createElement('td');
+            data.textContent = r.data.split('-').reverse().join('/');
+
+            const leitura = document.createElement('td');
+            leitura.textContent = Number(r.leitura_percentual)
+                .toLocaleString('pt-BR', { maximumFractionDigits: 2 });
+
+            const umidade = document.createElement('td');
+            umidade.textContent = Number(r.umidade_volumetrica)
+                .toLocaleString('pt-BR', {
+                    minimumFractionDigits: 4,
+                    maximumFractionDigits: 4
+                });
+
+            tr.append(data, leitura, umidade);
+            tbody.appendChild(tr);
+        });
+    })
+    .catch(error => {
+        console.error('Erro ao carregar tabela de drenagem:', error);
+        document.getElementById('drenagem-tbody').innerHTML =
+            '<tr><td colspan="3">Erro ao carregar as medições.</td></tr>';
+    });
+</script>
+
 {% endblock %}

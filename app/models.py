@@ -17,6 +17,20 @@ class DailyRecord(Base):
     kc = Column(Float, nullable=False)
     eto_mm = Column(Float, nullable=False)
     etc_mm = Column(Float, nullable=False)
+
+    # Resultados de irrigação com e sem Kl
+    etc_com_kl_mm = Column(Float, nullable=True)
+    etc_sem_kl_mm = Column(Float, nullable=True)
+
+    lamina_bruta_com_kl_mm = Column(Float, nullable=True)
+    lamina_bruta_sem_kl_mm = Column(Float, nullable=True)
+
+    volume_planta_com_kl_l = Column(Float, nullable=True)
+    volume_planta_sem_kl_l = Column(Float, nullable=True)
+
+    tempo_irrigacao_com_kl_min = Column(Float, nullable=True)
+    tempo_irrigacao_sem_kl_min = Column(Float, nullable=True)
+
     temperatura_media_c = Column(Float)
     temperatura_max_c = Column(Float)
     temperatura_min_c = Column(Float)
@@ -55,3 +69,19 @@ class PendingImport(Base):
     estadio = Column(String, nullable=False)
     conflicts_json = Column(Text, nullable=False, default="[]")
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    drenagem_data = Column(Date, nullable=True)
+    drenagem_leitura_percentual = Column(Float, nullable=True)
+class DrainageRecord(Base):
+    __tablename__ = "drainage_records"
+
+    id = Column(Integer, primary_key=True)
+    data = Column(Date, nullable=False, index=True)
+    leitura_percentual = Column(Float, nullable=False)
+    umidade_volumetrica = Column(Float, nullable=False)
+    arquivo_origem = Column(String, nullable=True)
+    usuario_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    criado_em = Column(
+        DateTime,
+        nullable=False,
+        default=datetime.utcnow
+    )

@@ -1,3 +1,122 @@
-{% extends "base.html" %}{% block content %}<h1>Importar dados meteorológicos (.xlsx)</h1><p>Nome esperado: <code>Dados_meteorologicos_aaaa-mm-dd.xlsx</code>. O sistema mantém um único registro oficial por data para todos os usuários.</p>{% if message %}<div class="alert ok">{{ message }}</div>{% endif %}{% if error %}<div class="alert error">{{ error }}</div>{% endif %}
-{% if conflicts %}<div class="alert warning"><strong>Confirmação necessária.</strong> Já existem registros oficiais para estas datas: {{ conflicts|join(", ") }}. Se confirmar, os valores dessas datas serão substituídos pelos resultados do novo arquivo. A versão anterior e a nova serão registradas na auditoria.</div><form method="post" action="/importar/confirmar"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="pending_id" value="{{ pending_id }}"><label class="confirm-label"><input type="checkbox" required> Confirmo que desejo substituir os registros dessas datas no histórico compartilhado.</label><button type="submit">Confirmar substituição</button></form><form method="post" action="/importar/cancelar"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="pending_id" value="{{ pending_id }}"><button class="secondary" type="submit">Cancelar e manter histórico atual</button></form>{% else %}<form method="post" enctype="multipart/form-data" action="/importar"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><label>Arquivo .xlsx</label><input type="file" name="arquivo" accept=".xlsx" required><label>Estágio da cultura</label><select name="estadio"><option>Inicial</option><option selected>Vegetativo</option><option>Floração/frutificação</option><option>Maturação/final</option></select><button type="submit">Importar e calcular</button></form>{% endif %}
+```html
+{% extends "base.html" %}
+
+{% block content %}
+<h1>Importar dados meteorológicos (.xlsx)</h1>
+
+<p>
+    Nome esperado:
+    <code>Dados_meteorologicos_aaaa-mm-dd.xlsx</code>.
+    O histórico meteorológico é compartilhado entre os usuários.
+</p>
+
+{% if message %}
+<div class="alert ok">{{ message }}</div>
+{% endif %}
+
+{% if error %}
+<div class="alert error">{{ error }}</div>
+{% endif %}
+
+{% if conflicts %}
+<div class="alert warning">
+    <strong>Confirmação necessária.</strong>
+    Já existem registros meteorológicos para estas datas:
+    {{ conflicts|join(", ") }}.
+    Se confirmar, os registros correspondentes serão atualizados.
+    A medição de drenagem será armazenada separadamente.
+</div>
+
+<form method="post" action="/importar/confirmar">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <input type="hidden" name="pending_id" value="{{ pending_id }}">
+
+    <label class="confirm-label">
+        <input type="checkbox" name="confirmar_substituicao" value="sim" required>
+        Confirmo a substituição dos registros meteorológicos existentes.
+    </label>
+
+    <button type="submit">Confirmar substituição</button>
+</form>
+
+<form method="post" action="/importar/cancelar">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <input type="hidden" name="pending_id" value="{{ pending_id }}">
+    <button class="secondary" type="submit">
+        Cancelar e manter histórico atual
+    </button>
+</form>
+
+{% elif show_drainage_form %}
+
+<h2>Medição da zona drenante</h2>
+
+<p>
+    O arquivo foi lido. Confira a data sugerida e informe a leitura
+    do sensor, em porcentagem. A medição será salva separadamente
+    do histórico meteorológico.
+</p>
+
+<form method="post" action="/importar/processar">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <input type="hidden" name="pending_id" value="{{ pending_id }}">
+
+    <label for="drenagem_data">Data da medição</label>
+    <input
+        type="date"
+        id="drenagem_data"
+        name="drenagem_data"
+        value="{{ suggested_date }}"
+        required
+    >
+
+    <label for="drenagem_leitura_percentual">
+        Leitura de umidade (%)
+    </label>
+   <input
+    type="number"
+    id="drenagem_leitura_percentual"
+    name="drenagem_leitura_percentual"
+    min="0"
+    max="100"
+    step="any"
+    placeholder="Ex.: 25"
+    value="{{ suggested_reading if suggested_reading is defined and suggested_reading is not none else '' }}"
+>
+
+    <p>
+        A leitura é opcional. Se preenchida, será convertida para
+        umidade volumétrica pela equação de calibração.
+    </p>
+
+    <button type="submit">Continuar importação</button>
+</form>
+
+{% else %}
+
+<form method="post" enctype="multipart/form-data" action="/importar">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+
+    <label for="arquivo">Arquivo meteorológico (.xlsx)</label>
+    <input
+        type="file"
+        id="arquivo"
+        name="arquivo"
+        accept=".xlsx"
+        required
+    >
+
+    <label for="estadio">Estágio da cultura</label>
+    <select id="estadio" name="estadio">
+        <option>Inicial</option>
+        <option selected>Vegetativo</option>
+        <option>Floração/frutificação</option>
+        <option>Maturação/final</option>
+    </select>
+
+    <button type="submit">Ler arquivo e continuar</button>
+</form>
+
+{% endif %}
 {% endblock %}
+```

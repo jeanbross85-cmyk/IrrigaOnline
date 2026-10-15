@@ -1,25 +1,324 @@
-{% extends "base.html" %}{% block content %}
+
+{% extends "base.html" %}
+{% block content %}
+
 <h1>Dashboard</h1>
+
 {% if latest %}
+<h2>Indicadores meteorológicos e de irrigação</h2>
+
 <div class="cards">
-<div class="card"><span>ETo diária</span><strong>{{ "%.2f"|format(latest.eto_mm) }} mm</strong></div>
-<div class="card"><span>ETc diária</span><strong>{{ "%.2f"|format(latest.etc_mm) }} mm</strong></div>
-<div class="card"><span>Precipitação</span><strong>{{ "%.2f"|format(latest.chuva_mm) }} mm</strong></div>
-<div class="card"><span>Temperatura média</span><strong>{{ "%.1f"|format(latest.temperatura_media_c) }} °C</strong></div>
-<div class="card"><span>Lâmina bruta</span><strong>{{ "%.2f"|format(latest.lamina_bruta_mm) }} mm</strong></div>
-<div class="card"><span>Tempo estimado</span><strong>{{ "%.1f"|format(latest.tempo_irrigacao_min) }} min</strong></div>
+    <div class="card">
+        <span>ETo diária</span>
+        <strong>{{ "%.2f"|format(latest.eto_mm) }} mm</strong>
+    </div>
+    <div class="card">
+        <span>ETc diária</span>
+        <strong>{{ "%.2f"|format(latest.etc_mm) }} mm</strong>
+    </div>
+    <div class="card">
+        <span>Precipitação</span>
+        <strong>{{ "%.2f"|format(latest.chuva_mm) }} mm</strong>
+    </div>
+    <div class="card">
+        <span>Temperatura média</span>
+        <strong>{{ "%.1f"|format(latest.temperatura_media_c) }} °C</strong>
+    </div>
 </div>
+
 <div class="alert {% if latest.status_dados == 'OK' %}ok{% else %}warning{% endif %}">
-Data mais recente: {{ latest.data.strftime("%d/%m/%Y") }}. Cobertura: {{ "%.1f"|format(latest.cobertura_dados*100) }}% — {{ latest.status_dados }}.
-{% if latest.status_dados != 'OK' %}<strong>Trate os resultados como estimativas; não automatize a irrigação com dados incompletos.</strong>{% endif %}
+    Data meteorológica mais recente:
+    {{ latest.data.strftime("%d/%m/%Y") }}.
+    Cobertura: {{ "%.1f"|format(latest.cobertura_dados * 100) }}% —
+    {{ latest.status_dados }}.
+    {% if latest.status_dados != 'OK' %}
+    <strong>Os resultados são estimativas. Verifique os dados antes de irrigar.</strong>
+    {% endif %}
 </div>
-<h2>Histórico recente</h2><div id="overview"></div>
-<table><tr><th>Data</th><th>ETo</th><th>ETc</th><th>Chuva</th><th>Lâmina</th><th>Tempo</th><th>Cobertura</th></tr>
-{% for r in records %}<tr><td>{{ r.data.strftime("%d/%m/%Y") }}</td><td>{{ "%.2f"|format(r.eto_mm) }}</td><td>{{ "%.2f"|format(r.etc_mm) }}</td><td>{{ "%.2f"|format(r.chuva_mm) }}</td><td>{{ "%.2f"|format(r.lamina_bruta_mm) }}</td><td>{{ "%.1f"|format(r.tempo_irrigacao_min) }} min</td><td>{{ "%.1f"|format(r.cobertura_dados*100) }}%</td></tr>{% endfor %}</table>
-<script>fetch('/api/historico').then(r=>r.json()).then(d=>{let x=d.map(v=>v.data);Plotly.newPlot('overview',[
-{x,y:d.map(v=>v.eto),name:'ETo',mode:'lines+markers'},
-{x,y:d.map(v=>v.etc),name:'ETc',mode:'lines+markers'}
-],{title:'ETo e ETc por dia',xaxis:{title:'Data',tickformat:'%d/%m/%Y'},yaxis:{title:'mm/dia'}})});</script>
+
+<h2>Comparação dos cenários de irrigação</h2>
+<p>
+    Com Kl: considera a fração de área molhada medida em campo (Kl = 0,32).
+    Sem Kl: apresenta o cenário sem aplicação desse fator.
+</p>
+
+<div class="cards">
+    <div class="card">
+        <span>Lâmina bruta com Kl</span>
+        <strong>{{ "%.2f"|format(latest.lamina_bruta_com_kl_mm or 0) }} mm</strong>
+    </div>
+    <div class="card">
+        <span>Lâmina bruta sem Kl</span>
+        <strong>{{ "%.2f"|format(latest.lamina_bruta_sem_kl_mm or 0) }} mm</strong>
+    </div>
+    <div class="card">
+        <span>Tempo com Kl</span>
+        <strong>{{ "%.1f"|format(latest.tempo_irrigacao_com_kl_min or 0) }} min</strong>
+    </div>
+    <div class="card">
+        <span>Tempo sem Kl</span>
+        <strong>{{ "%.1f"|format(latest.tempo_irrigacao_sem_kl_min or 0) }} min</strong>
+    </div>
+</div>
+
+<div id="laminaChart"></div>
+<div id="irrigationTimeChart"></div><h2>Histórico meteorológico e de irrigação</h2>
+
+<div style="overflow-x:auto">
+<table>
+    <thead>
+        <tr>
+            <th>Data</th>
+            <th>ETo (mm)</th>
+            <th>ETc (mm)</th>
+            <th>Chuva (mm)</th>
+            <th>Lâmina com Kl (mm)</th>
+            <th>Lâmina sem Kl (mm)</th>
+            <th>Tempo com Kl (min)</th>
+            <th>Tempo sem Kl (min)</th>
+            <th>Cobertura</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for r in records %}
+        <tr>
+            <td>{{ r.data.strftime("%d/%m/%Y") }}</td>
+            <td>{{ "%.2f"|format(r.eto_mm or 0) }}</td>
+            <td>{{ "%.2f"|format(r.etc_mm or 0) }}</td>
+            <td>{{ "%.2f"|format(r.chuva_mm or 0) }}</td>
+            <td>{{ "%.2f"|format(r.lamina_bruta_com_kl_mm or 0) }}</td>
+            <td>{{ "%.2f"|format(r.lamina_bruta_sem_kl_mm or 0) }}</td>
+            <td>{{ "%.1f"|format(r.tempo_irrigacao_com_kl_min or 0) }}</td>
+            <td>{{ "%.1f"|format(r.tempo_irrigacao_sem_kl_min or 0) }}</td>
+            <td>{{ "%.1f"|format((r.cobertura_dados or 0) * 100) }}%</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+</div>
+
 {% else %}
-<div class="empty"><h2>Sem dados importados</h2><p>Importe um arquivo da CR1000 para começar a construir o histórico.</p><a class="button" href="/importar">Importar dados</a></div>
-{% endif %}{% endblock %}
+<div class="empty">
+    <h2>Sem dados meteorológicos importados</h2>
+    <p>Importe um arquivo da estação para começar a construir o histórico.</p>
+    <a class="button" href="/importar">Importar dados</a>
+</div>
+{% endif %}
+
+<hr>
+
+<h2>Drenagem e umidade na zona drenante</h2>
+<p>
+    A umidade volumétrica é calculada pela equação de calibração
+    informada, com resultado em m³/m³.
+</p>
+
+{% if latest_drainage %}
+<div class="cards">
+    <div class="card">
+        <span>Leitura mais recente</span>
+        <strong>{{ "%.2f"|format(latest_drainage.leitura_percentual) }}%</strong>
+    </div>
+    <div class="card">
+        <span>Umidade volumétrica</span>
+        <strong>{{ "%.4f"|format(latest_drainage.umidade_volumetrica) }} m³/m³</strong>
+    </div>
+    <div class="card">
+        <span>Data da leitura</span>
+        <strong>{{ latest_drainage.data.strftime("%d/%m/%Y") }}</strong>
+    </div>
+</div>
+
+<div id="drainageChart"></div>
+
+<div style="overflow-x:auto">
+<table>
+    <thead>
+        <tr>
+            <th>Data</th>
+            <th>Leitura (%)</th>
+            <th>Umidade volumétrica (m³/m³)</th>
+            <th>Arquivo de origem</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for d in drainage_records %}
+        <tr>
+            <td>{{ d.data.strftime("%d/%m/%Y") }}</td>
+            <td>{{ "%.2f"|format(d.leitura_percentual) }}</td>
+            <td>{{ "%.4f"|format(d.umidade_volumetrica) }}</td>
+            <td>{{ d.arquivo_origem or "—" }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+</div>
+
+{% else %}
+<p>Nenhuma leitura de drenagem foi registrada.</p>
+{% endif %}
+
+<script>
+
+fetch('/api/historico')
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Falha ao carregar o histórico');
+        }
+        return response.json();
+    })
+    .then(data => {
+        const rows = [...data].sort((a, b) =>
+            a.data.localeCompare(b.data)
+        );
+
+        const datas = rows.map(v => v.data);
+
+        const numeroOuNulo = valor =>
+            valor === null || valor === undefined || valor === ''
+                ? null
+                : Number(valor);
+
+        // Gráfico 1: lâminas de irrigação
+        Plotly.newPlot('laminaChart', [
+            {
+                x: datas,
+                y: rows.map(v => numeroOuNulo(v.lamina_bruta_com_kl_mm)),
+                name: 'Com Kl (0,32)',
+                mode: 'lines+markers',
+                connectgaps: false,
+                line: { width: 3 },
+                marker: { size: 7 }
+            },
+            {
+                x: datas,
+                y: rows.map(v => numeroOuNulo(v.lamina_bruta_sem_kl_mm)),
+                name: 'Sem Kl',
+                mode: 'lines+markers',
+                connectgaps: false,
+                line: { width: 3 },
+                marker: { size: 7 }
+            }
+        ], {
+            title: 'Lâmina bruta de irrigação por dia',
+            xaxis: {
+                title: 'Data',
+                type: 'date',
+                tickformat: '%d/%m'
+            },
+            yaxis: {
+                title: 'Lâmina bruta (mm)',
+                rangemode: 'tozero'
+            },
+            legend: { orientation: 'h' },
+            margin: { t: 60, b: 65, l: 65, r: 25 },
+            autosize: true
+        }, { responsive: true });
+
+        // Gráfico 2: tempo de irrigação
+        Plotly.newPlot('irrigationTimeChart', [
+            {
+                x: datas,
+                y: rows.map(v => numeroOuNulo(v.tempo_irrigacao_com_kl_min)),
+                name: 'Com Kl (0,32)',
+                mode: 'lines+markers',
+                connectgaps: false,
+                line: { width: 3 },
+                marker: { size: 7 }
+            },
+            {
+                x: datas,
+                y: rows.map(v => numeroOuNulo(v.tempo_irrigacao_sem_kl_min)),
+                name: 'Sem Kl',
+                mode: 'lines+markers',
+                connectgaps: false,
+                line: { width: 3 },
+                marker: { size: 7 }
+            }
+        ], {
+            title: 'Tempo estimado de irrigação por dia',
+            xaxis: {
+                title: 'Data',
+                type: 'date',
+                tickformat: '%d/%m'
+            },
+            yaxis: {
+                title: 'Tempo (minutos)',
+                rangemode: 'tozero'
+            },
+            legend: { orientation: 'h' },
+            margin: { t: 60, b: 65, l: 65, r: 25 },
+            autosize: true
+        }, { responsive: true });
+    })
+    .catch(error => console.error(
+        'Erro nos gráficos de irrigação:', error
+    ));
+
+{% if drainage_records %}
+
+Plotly.newPlot('drainageChart', [
+    {
+        x: [
+            {% for d in drainage_records|reverse %}
+            "{{ d.data.isoformat() }}"{% if not loop.last %},{% endif %}
+            {% endfor %}
+        ],
+        y: [
+            {% for d in drainage_records|reverse %}
+            {{ d.leitura_percentual }}{% if not loop.last %},{% endif %}
+            {% endfor %}
+        ],
+        name: 'Leitura (%)',
+        type: 'scatter',
+        mode: 'lines+markers',
+        connectgaps: false,
+        line: { width: 3 },
+        marker: { size: 8 },
+        yaxis: 'y'
+    },
+    {
+        x: [
+            {% for d in drainage_records|reverse %}
+            "{{ d.data.isoformat() }}"{% if not loop.last %},{% endif %}
+            {% endfor %}
+        ],
+        y: [
+            {% for d in drainage_records|reverse %}
+            {{ d.umidade_volumetrica }}{% if not loop.last %},{% endif %}
+            {% endfor %}
+        ],
+        name: 'Umidade volumétrica (m³/m³)',
+        type: 'scatter',
+        mode: 'lines+markers',
+        connectgaps: false,
+        line: { width: 3 },
+        marker: { size: 8 },
+        yaxis: 'y2'
+    }
+], {
+    title: 'Histórico de drenagem',
+    xaxis: {
+        title: 'Data',
+        type: 'date',
+        tickformat: '%d/%m'
+    },
+    yaxis: {
+        title: 'Leitura (%)',
+        side: 'left',
+        range: [0, 100]
+    },
+    yaxis2: {
+        title: 'Umidade volumétrica (m³/m³)',
+        overlaying: 'y',
+        side: 'right',
+        autorange: true
+    },
+    legend: { orientation: 'h' },
+    margin: { t: 60, b: 70, l: 70, r: 90 },
+    autosize: true
+}, { responsive: true });
+{% endif %}
+</script>
+
+{% endblock %}

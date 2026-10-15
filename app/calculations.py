@@ -13,7 +13,7 @@ def calculate_eto(tmean, tmax, tmin, rhmax, rhmin, wind, rn_mj_m2_day,
     delta = 4098 * saturation_vapor_pressure(tmean) / ((tmean + 237.3) ** 2)
     es_max, es_min = saturation_vapor_pressure(tmax), saturation_vapor_pressure(tmin)
     es = (es_max + es_min) / 2
-    ea = (es_min * rhmin / 100 + es_max * rhmax / 100) / 2
+    ea = (es_min * rhmax / 100 + es_max * rhmin / 100) / 2
     vpd = max(0.0, es - ea)
     u2 = wind if wind_height == 2 else wind * 4.87 / math.log(67.8 * wind_height - 5.42)
     eto = (0.408 * delta * rn_mj_m2_day + gamma * (900 / (tmean + 273)) * u2 * vpd) / (
@@ -43,16 +43,67 @@ def daily_summary(day_df: pd.DataFrame):
         "rn": float(rn), "eto": float(eto),
     }
 
-def irrigation(eto, kc, rain, efficiency=EFICIENCIA_SISTEMA):
-    etc = eto * kc
-    effective_rain = min(max(rain, 0), etc)
-    net_need = max(0, etc - effective_rain)
-    gross_depth = net_need / efficiency
-    volume_plant = gross_depth * AREA_POR_PLANTA_M2
-    time_min = volume_plant / VAZAO_PLANTA_LH * 60
-    return {"etc": etc, "chuva_efetiva": effective_rain, "necessidade_liquida": net_need,
-            "lamina_bruta": gross_depth, "volume_planta": volume_plant,
-            "tempo_irrigacao": time_min}
+
+def irrigation(eto, kc, rain, efficiency=EFICIENCIA_SISTEMA, kl=0.32):
+    """
+    Calcula dois cenários de irrigação:
+    - com Kl: ETc = ETo * Kc * Kl
+    - sem Kl: ETc = ETo * Kc
+
+    As lâminas são expressas em mm; o volume, em L/planta;
+    e o tempo, em minutos.
+    """
+    if eto < 0:
+        raise ValueError("ETo não pode ser negativa.")
+    if kc < 0:
+        raise ValueError("Kc não pode ser negativo.")
+    if not 0 < efficiency <= 1:
+        raise ValueError("A eficiência deve estar entre 0 e 1.")
+    if not 0 <= kl <= 1:
+        raise ValueError("Kl deve estar entre 0 e 1.")
+
+    def calcular_cenario(fator_kl):
+        etc = eto * kc * fator_kl
+
+        # A chuva efetiva é limitada à ETc considerada em cada cenário.
+        chuva_efetiva = min(max(rain, 0), etc)
+        necessidade_liquida = max(0, etc - chuva_efetiva)
+
+        # Lâmina bruta em mm, corrigida pela eficiência do sistema.
+        lamina_bruta_mm = necessidade_liquida / efficiency
+
+        # mm × m² = litros por planta.
+        volume_planta_l = lamina_bruta_mm * AREA_POR_PLANTA_M2
+
+        # Vazão em L/h convertida para tempo em minutos.
+        tempo_irrigacao_min = (
+            volume_planta_l / VAZAO_PLANTA_LH * 60
+        )
+
+        return {
+            "etc": etc,
+            "chuva_efetiva": chuva_efetiva,
+            "necessidade_liquida": necessidade_liquida,
+            "lamina_bruta": lamina_bruta_mm,
+            "volume_planta": volume_planta_l,
+            "tempo_irrigacao": tempo_irrigacao_min,
+        }
+
+    com_kl = calcular_cenario(kl)
+    sem_kl = calcular_cenario(1.0)
+
+    return {
+        **com_kl,
+        "etc_com_kl_mm": com_kl["etc"],
+        "etc_sem_kl_mm": sem_kl["etc"],
+        "lamina_bruta_com_kl_mm": com_kl["lamina_bruta"],
+        "lamina_bruta_sem_kl_mm": sem_kl["lamina_bruta"],
+        "volume_planta_com_kl_l": com_kl["volume_planta"],
+        "volume_planta_sem_kl_l": sem_kl["volume_planta"],
+        "tempo_irrigacao_com_kl_min": com_kl["tempo_irrigacao"],
+        "tempo_irrigacao_sem_kl_min": sem_kl["tempo_irrigacao"],
+    }
+
 
 def coverage_status(coverage):
     if coverage >= 0.90:
