@@ -205,44 +205,64 @@
 
 <h3>7. Comparação dos cenários com e sem Kl</h3>
 
+
 <table>
     <tr>
         <th>Indicador</th>
         <th>Com Kl</th>
         <th>Sem Kl</th>
+        <th>Método da área de campo</th>
     </tr>
     <tr>
-        <td>ETc</td>
-        <td>ETo × Kc × 0,32</td>
+        <td>Critério</td>
+        <td>Fator Kl aplicado conforme o método configurado</td>
+        <td>Sem aplicação do fator Kl</td>
+        <td>Fração de área molhada medida em campo</td>
+    </tr>
+    <tr>
+        <td>Fator de ajuste</td>
+        <td>Kl configurado</td>
+        <td>Não aplicado</td>
+        <td>Fração de área molhada = 0,32 (32%)</td>
+    </tr>
+    <tr>
+        <td>ETc ajustada</td>
+        <td>ETo × Kc × Kl</td>
         <td>ETo × Kc</td>
+        <td>ETo × Kc × 0,32, se essa for a regra definida para o método</td>
     </tr>
     <tr>
         <td>Chuva efetiva</td>
-        <td>Limitada à ETc do cenário</td>
-        <td>Limitada à ETc do cenário</td>
+        <td>Considerada conforme a regra de cálculo</td>
+        <td>Considerada conforme a regra de cálculo</td>
+        <td>Considerada conforme a regra de cálculo</td>
     </tr>
     <tr>
         <td>Lâmina bruta</td>
         <td>Necessidade líquida / eficiência</td>
         <td>Necessidade líquida / eficiência</td>
+        <td>Necessidade líquida / eficiência</td>
     </tr>
     <tr>
         <td>Volume por planta</td>
-        <td>Lâmina × área efetiva</td>
-        <td>Lâmina × área efetiva</td>
+        <td>Conforme a área efetiva considerada</td>
+        <td>Conforme a área efetiva considerada</td>
+        <td>Conforme a área molhada observada e a regra do cálculo</td>
     </tr>
     <tr>
         <td>Tempo de irrigação</td>
-        <td>Volume / vazão × 60</td>
-        <td>Volume / vazão × 60</td>
+        <td>Volume por planta / vazão por planta × 60</td>
+        <td>Volume por planta / vazão por planta × 60</td>
+        <td>Volume por planta / vazão por planta × 60</td>
     </tr>
 </table>
 
 <p>
-    A diferença entre os cenários permite avaliar como a aplicação do fator Kl
-    altera as estimativas de ETc, lâmina bruta, volume e tempo. Quando a chuva
-    efetiva iguala a ETc de um cenário, a necessidade líquida e o tempo calculado
-    nesse cenário podem ser zero.
+    <strong>Nota sobre os métodos:</strong> o fator Kl e a fração de área
+    molhada medida em campo são critérios distintos. A fração de 0,32
+    corresponde à área molhada observada em campo. Sua aplicação à ETc,
+    à lâmina ou ao volume deve seguir a formulação implementada no método
+    da área de campo. Não se deve aplicar o mesmo ajuste duas vezes.
 </p>
 
 <h3>8. Qualidade dos dados e limitações</h3>
