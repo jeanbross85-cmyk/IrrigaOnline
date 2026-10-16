@@ -1,3 +1,4 @@
+from .config import VAZAO_PLANTA_LH
 from datetime import datetime
 from sqlalchemy import Column, Integer, String, Float, Date, DateTime, Text, ForeignKey, UniqueConstraint, LargeBinary
 from .db import Base
@@ -30,6 +31,21 @@ class DailyRecord(Base):
 
     tempo_irrigacao_com_kl_min = Column(Float, nullable=True)
     tempo_irrigacao_sem_kl_min = Column(Float, nullable=True)
+    @property
+    def tempo_irrigacao_campo_min(self):
+        """Tempo sem Kl calculado com 0,50 m² por planta."""
+        if self.lamina_bruta_sem_kl_mm is None:
+            return None
+
+        area_campo_m2 = 0.50
+        vazao_planta_l_h = VAZAO_PLANTA_LH
+
+        return (
+            self.lamina_bruta_sem_kl_mm
+            * area_campo_m2
+            / vazao_planta_l_h
+            * 60
+        )
 
     temperatura_media_c = Column(Float)
     temperatura_max_c = Column(Float)

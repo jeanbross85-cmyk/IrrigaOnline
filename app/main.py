@@ -154,8 +154,16 @@ def exportar_historico_excel(request: Request):
             for col in colunas
         ])
 
+        # Cabeçalho da coluna adicional de tempo de campo.
+        ws.cell(
+            row=1,
+            column=len(colunas) + 1,
+            value="Tempo sem Kl - área de campo (0,50 m²/planta)",
+        )
+
         for record in records:
             linha = []
+
             for col in colunas:
                 valor = getattr(record, col.name)
 
@@ -166,6 +174,13 @@ def exportar_historico_excel(request: Request):
                 linha.append(valor)
 
             ws.append(linha)
+
+            # Tempo de irrigação calculado para a área de campo.
+            ws.cell(
+                row=ws.max_row,
+                column=len(colunas) + 1,
+                value=record.tempo_irrigacao_campo_min,
+            )
 
         # Segunda aba: medições de drenagem.
         wd = wb.create_sheet("Historico Drenagem")
@@ -266,6 +281,7 @@ def records_as_json(records):
             "volume_planta_sem_kl_l": r.volume_planta_sem_kl_l,
             "tempo_irrigacao_com_kl_min": r.tempo_irrigacao_com_kl_min,
             "tempo_irrigacao_sem_kl_min": r.tempo_irrigacao_sem_kl_min,
+            "tempo_irrigacao_campo_min": r.tempo_irrigacao_campo_min,
 
             # Outras variáveis do histórico.
             "temperatura": r.temperatura_media_c,

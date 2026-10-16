@@ -30,6 +30,7 @@
     <div id="depth_sem_kl"></div>
     <div id="time"></div>
     <div id="time_sem_kl"></div>
+    <div id="time_campo"></div>
     <div id="drainage" style="grid-column: 1 / -1;"></div>
 </div>
 
@@ -54,7 +55,7 @@
             <th rowspan="2">Rn</th>
             <th colspan="2">Lâmina bruta (mm)</th>
             <th colspan="2">Volume por planta (L)</th>
-            <th colspan="2">Tempo (min)</th>
+            <th colspan="3">Tempo (min)</th>
             <th rowspan="2">Cobertura</th>
             <th rowspan="2">Status</th>
         </tr>
@@ -67,6 +68,7 @@
             <th>Sem Kl</th>
             <th>Com Kl</th>
             <th>Sem Kl</th>
+            <th>Área de campo (0,50 m²/planta)</th>
         </tr>
     </thead>
     <tbody>
@@ -136,7 +138,11 @@
                     {{ "%.2f"|format(r.tempo_irrigacao_sem_kl_min) }}
                 {% else %}—{% endif %}
             </td>
-
+             <td>
+               {% if r.tempo_irrigacao_campo_min is not none %}
+                   {{ "%.2f"|format(r.tempo_irrigacao_campo_min) }}
+               {% else %}—{% endif %}
+            </td>
             <td>
                 {% if r.cobertura_dados is not none %}
                     {{ "%.1f"|format(r.cobertura_dados * 100) }}%
@@ -221,8 +227,9 @@ fetch('/api/historico')
             ['depth', 'Lâmina bruta com Kl', 'Lâmina (mm)', d.map(v => v.lamina)],
             ['depth_sem_kl', 'Lâmina bruta sem Kl', 'Lâmina (mm)', d.map(v => v.lamina_bruta_sem_kl_mm)],
             ['time', 'Tempo de irrigação com Kl', 'Tempo (min)', d.map(v => v.tempo)],
-            ['time_sem_kl', 'Tempo de irrigação sem Kl', 'Tempo (min)', d.map(v => v.tempo_irrigacao_sem_kl_min)]
-        ];
+            ['time_sem_kl', 'Tempo de irrigação sem Kl', 'Tempo (min)', d.map(v => v.tempo_irrigacao_sem_kl_min)],
+            ['time_campo', 'Tempo de irrigação — área de campo (0,50 m²/planta)', 'Tempo (min)', d.map(v => v.tempo_irrigacao_campo_min)]
+            ];
 
         configs.forEach(c => {
             const elemento = document.getElementById(c[0]);

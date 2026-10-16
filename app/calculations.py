@@ -1,6 +1,14 @@
 import math
 import pandas as pd
-from .config import ALTITUDE_M, ALTURA_VENTO_M, EFICIENCIA_SISTEMA, VAZAO_PLANTA_LH, AREA_POR_PLANTA_M2
+from .config import (
+    ALTITUDE_M,
+    ALTURA_VENTO_M,
+    EFICIENCIA_SISTEMA,
+    VAZAO_PLANTA_LH,
+    AREA_POR_PLANTA_M2,
+    AREA_CAMPO_POR_PLANTA_M2,
+    FATOR_AREA_MOLHADA,
+)
 
 def saturation_vapor_pressure(temp_c: float) -> float:
     return 0.6108 * math.exp((17.27 * temp_c) / (temp_c + 237.3))
@@ -42,40 +50,62 @@ def daily_summary(day_df: pd.DataFrame):
         "chuva": float(rain if pd.notna(rain) else 0),
         "rn": float(rn), "eto": float(eto),
     }
-
-
-def irrigation(eto, kc, rain, efficiency=EFICIENCIA_SISTEMA, kl=0.32):
+def irrigation(
+    eto,
+    kc,
+    rain,
+    efficiency=EFICIENCIA_SISTEMA,
+    kl=FATOR_AREA_MOLHADA,
+):
     """
-    Calcula dois cenários de irrigação:
-    - com Kl: ETc = ETo * Kc * Kl
-    - sem Kl: ETc = ETo * Kc
+    Calcula três métodos de irrigação.
 
-    As lâminas são expressas em mm; o volume, em L/planta;
-    e o tempo, em minutos.
+    Método 1:
+        ETc = ETo * Kc * fator de área molhada
+        Área por planta = área efetiva configurada.
+
+    Método 2:
+        ETc = ETo * Kc
+        Área por planta = área efetiva configurada.
+
+    Método 3:
+        ETc = ETo * Kc
+        Área por planta = área de campo configurada.
+
+    A lâmina bruta considera a eficiência do sistema.
+    A chuva efetiva é limitada à ETc.
     """
+
     if eto < 0:
         raise ValueError("ETo não pode ser negativa.")
+
     if kc < 0:
         raise ValueError("Kc não pode ser negativo.")
+
     if not 0 < efficiency <= 1:
-        raise ValueError("A eficiência deve estar entre 0 e 1.")
+        raise ValueError("A eficiência deve ser maior que 0 e menor ou igual a 1.")
+
     if not 0 <= kl <= 1:
-        raise ValueError("Kl deve estar entre 0 e 1.")
+        raise ValueError("O fator de área molhada deve estar entre 0 e 1.")
 
-    def calcular_cenario(fator_kl):
-        etc = eto * kc * fator_kl
+    if VAZAO_PLANTA_LH <= 0:
+        raise ValueError("A vazão por planta deve ser maior que zero.")
 
-        # A chuva efetiva é limitada à ETc considerada em cada cenário.
+    if AREA_POR_PLANTA_M2 <= 0 or AREA_CAMPO_POR_PLANTA_M2 <= 0:
+        raise ValueError("As áreas por planta devem ser maiores que zero.")
+
+    def calcular_cenario(fator_etc, area_planta):
+        etc = eto * kc * fator_etc
+
         chuva_efetiva = min(max(rain, 0), etc)
-        necessidade_liquida = max(0, etc - chuva_efetiva)
+        necessidade_liquida = max(0.0, etc - chuva_efetiva)
 
-        # Lâmina bruta em mm, corrigida pela eficiência do sistema.
         lamina_bruta_mm = necessidade_liquida / efficiency
 
-        # mm × m² = litros por planta.
-        volume_planta_l = lamina_bruta_mm * AREA_POR_PLANTA_M2
+        volume_planta_l = (
+            lamina_bruta_mm * area_planta
+        )
 
-        # Vazão em L/h convertida para tempo em minutos.
         tempo_irrigacao_min = (
             volume_planta_l / VAZAO_PLANTA_LH * 60
         )
@@ -89,21 +119,47 @@ def irrigation(eto, kc, rain, efficiency=EFICIENCIA_SISTEMA, kl=0.32):
             "tempo_irrigacao": tempo_irrigacao_min,
         }
 
-    com_kl = calcular_cenario(kl)
-    sem_kl = calcular_cenario(1.0)
+    # Método 1: ETc ajustada pela área molhada.
+    metodo1 = calcular_cenario(
+    kl,
+    AREA_POR_PLANTA_M2,
+    )
+
+    # Método 2: ETc integral e área efetiva por planta.
+    metodo2 = calcular_cenario(
+        1.0,
+        AREA_POR_PLANTA_M2,
+    )
+
+    # Método 3: ETc integral e área de campo por planta.
+    metodo3 = calcular_cenario(
+        1.0,
+        AREA_CAMPO_POR_PLANTA_M2,
+    )
 
     return {
-        **com_kl,
-        "etc_com_kl_mm": com_kl["etc"],
-        "etc_sem_kl_mm": sem_kl["etc"],
-        "lamina_bruta_com_kl_mm": com_kl["lamina_bruta"],
-        "lamina_bruta_sem_kl_mm": sem_kl["lamina_bruta"],
-        "volume_planta_com_kl_l": com_kl["volume_planta"],
-        "volume_planta_sem_kl_l": sem_kl["volume_planta"],
-        "tempo_irrigacao_com_kl_min": com_kl["tempo_irrigacao"],
-        "tempo_irrigacao_sem_kl_min": sem_kl["tempo_irrigacao"],
-    }
+        # Campos legados: preservam a compatibilidade.
+        **metodo1,
 
+        # Métodos 1 e 2: campos já utilizados pelo histórico.
+        "etc_com_kl_mm": metodo1["etc"],
+        "etc_sem_kl_mm": metodo2["etc"],
+
+        "lamina_bruta_com_kl_mm": metodo1["lamina_bruta"],
+        "lamina_bruta_sem_kl_mm": metodo2["lamina_bruta"],
+
+        "volume_planta_com_kl_l": metodo1["volume_planta"],
+        "volume_planta_sem_kl_l": metodo2["volume_planta"],
+
+        "tempo_irrigacao_com_kl_min": metodo1["tempo_irrigacao"],
+        "tempo_irrigacao_sem_kl_min": metodo2["tempo_irrigacao"],
+
+        # Método 3: área de campo de 0,50 m² por planta.
+        "etc_metodo3_mm": metodo3["etc"],
+        "lamina_bruta_metodo3_mm": metodo3["lamina_bruta"],
+        "volume_planta_campo_l": metodo3["volume_planta"],
+        "tempo_irrigacao_campo_min": metodo3["tempo_irrigacao"],
+    }
 
 def coverage_status(coverage):
     if coverage >= 0.90:

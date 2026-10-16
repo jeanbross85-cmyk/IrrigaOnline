@@ -59,6 +59,10 @@
         <span>Tempo sem Kl</span>
         <strong>{{ "%.1f"|format(latest.tempo_irrigacao_sem_kl_min or 0) }} min</strong>
     </div>
+    <div class="card">
+        <span>Tempo sem Kl — área de campo (0,50 m²/planta)</span>
+        <strong>{{ "%.1f"|format(latest.tempo_irrigacao_campo_min or 0) }} min</strong>
+    </div>
 </div>
 
 <div id="laminaChart"></div>
@@ -76,6 +80,7 @@
             <th>Lâmina sem Kl (mm)</th>
             <th>Tempo com Kl (min)</th>
             <th>Tempo sem Kl (min)</th>
+            <th>Tempo área de campo (min)</th>
             <th>Cobertura</th>
         </tr>
     </thead>
@@ -90,6 +95,7 @@
             <td>{{ "%.2f"|format(r.lamina_bruta_sem_kl_mm or 0) }}</td>
             <td>{{ "%.1f"|format(r.tempo_irrigacao_com_kl_min or 0) }}</td>
             <td>{{ "%.1f"|format(r.tempo_irrigacao_sem_kl_min or 0) }}</td>
+            <td>{{ "%.1f"|format(r.tempo_irrigacao_campo_min or 0) }}</td>
             <td>{{ "%.1f"|format((r.cobertura_dados or 0) * 100) }}%</td>
         </tr>
         {% endfor %}
@@ -230,6 +236,15 @@ fetch('/api/historico')
                 x: datas,
                 y: rows.map(v => numeroOuNulo(v.tempo_irrigacao_sem_kl_min)),
                 name: 'Sem Kl',
+                mode: 'lines+markers',
+                connectgaps: false,
+                line: { width: 3 },
+                marker: { size: 7 }
+            },
+            {
+                x: datas,
+                y: rows.map(v => numeroOuNulo(v.tempo_irrigacao_campo_min)),
+                name: 'Sem Kl — área de campo (0,50 m²/planta)',
                 mode: 'lines+markers',
                 connectgaps: false,
                 line: { width: 3 },
