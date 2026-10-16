@@ -206,6 +206,7 @@
 <h3>7. Comparação dos cenários com e sem Kl</h3>
 
 
+
 <table>
     <tr>
         <th>Indicador</th>
@@ -214,55 +215,75 @@
         <th>Método da área de campo</th>
     </tr>
     <tr>
-        <td>Critério</td>
-        <td>Fator Kl aplicado conforme o método configurado</td>
-        <td>Sem aplicação do fator Kl</td>
-        <td>Fração de área molhada medida em campo</td>
-    </tr>
-    <tr>
-        <td>Fator de ajuste</td>
-        <td>Kl configurado</td>
+        <td>Fator Kl</td>
+        <td>Aplicado conforme o método</td>
         <td>Não aplicado</td>
-        <td>Fração de área molhada = 0,32 (32%)</td>
+        <td>Não utilizado</td>
     </tr>
     <tr>
-        <td>ETc ajustada</td>
-        <td>ETo × Kc × Kl</td>
+        <td>Área de referência</td>
+        <td>Conforme a fórmula do método</td>
+        <td>Conforme a fórmula do método</td>
+        <td>Área por planta: 0,50 m²</td>
+    </tr>
+    <tr>
+        <td>Fração de área molhada</td>
+        <td>Conforme a implementação</td>
+        <td>Conforme a implementação</td>
+        <td>Não utilizada como área efetiva</td>
+    </tr>
+    <tr>
+        <td>ETc</td>
+        <td>Conforme a fórmula com Kl</td>
         <td>ETo × Kc</td>
-        <td>ETo × Kc × 0,32, se essa for a regra definida para o método</td>
+        <td>ETo × Kc</td>
     </tr>
     <tr>
         <td>Chuva efetiva</td>
-        <td>Considerada conforme a regra de cálculo</td>
-        <td>Considerada conforme a regra de cálculo</td>
-        <td>Considerada conforme a regra de cálculo</td>
+        <td>Conforme a regra de cálculo</td>
+        <td>Conforme a regra de cálculo</td>
+        <td>Conforme a regra de cálculo</td>
+    </tr>
+    <tr>
+        <td>Lâmina líquida</td>
+        <td>Conforme o balanço hídrico</td>
+        <td>Conforme o balanço hídrico</td>
+        <td>Conforme o balanço hídrico</td>
     </tr>
     <tr>
         <td>Lâmina bruta</td>
-        <td>Necessidade líquida / eficiência</td>
-        <td>Necessidade líquida / eficiência</td>
-        <td>Necessidade líquida / eficiência</td>
+        <td>Lâmina líquida / eficiência</td>
+        <td>Lâmina líquida / eficiência</td>
+        <td>Lâmina líquida / eficiência</td>
     </tr>
     <tr>
         <td>Volume por planta</td>
-        <td>Conforme a área efetiva considerada</td>
-        <td>Conforme a área efetiva considerada</td>
-        <td>Conforme a área molhada observada e a regra do cálculo</td>
+        <td>Conforme a área de referência</td>
+        <td>Conforme a área de referência</td>
+        <td>Lâmina bruta (mm) × 0,50 (m²/planta)</td>
+    </tr>
+    <tr>
+        <td>Vazão nominal por planta</td>
+        <td>4,005 L/h</td>
+        <td>4,005 L/h</td>
+        <td>4,005 L/h</td>
     </tr>
     <tr>
         <td>Tempo de irrigação</td>
-        <td>Volume por planta / vazão por planta × 60</td>
-        <td>Volume por planta / vazão por planta × 60</td>
-        <td>Volume por planta / vazão por planta × 60</td>
+        <td>Volume por planta / vazão × 60</td>
+        <td>Volume por planta / vazão × 60</td>
+        <td>Volume por planta / vazão × 60</td>
     </tr>
 </table>
 
 <p>
-    <strong>Nota sobre os métodos:</strong> o fator Kl e a fração de área
-    molhada medida em campo são critérios distintos. A fração de 0,32
-    corresponde à área molhada observada em campo. Sua aplicação à ETc,
-    à lâmina ou ao volume deve seguir a formulação implementada no método
-    da área de campo. Não se deve aplicar o mesmo ajuste duas vezes.
+    A comparação permite avaliar as diferenças entre os cenários com Kl,
+    sem Kl e pelo método da área de campo. Neste último método, não se
+    utiliza o fator Kl nem a fração de área molhada como área efetiva.
+    O volume por planta considera a lâmina bruta e a área por planta
+    de 0,50 m², correspondente ao espaçamento de 1,0 m entre linhas
+    e 0,5 m entre plantas. O tempo de irrigação é estimado a partir
+    do volume por planta e da vazão nominal total de 4,005 L/h.
 </p>
 
 <h3>8. Qualidade dos dados e limitações</h3>
