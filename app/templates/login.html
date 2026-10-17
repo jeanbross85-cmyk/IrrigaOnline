@@ -1,1 +1,38 @@
-{% extends "base.html" %}{% block content %}<div class="login-wrap"><h1>Acesso ao Agente de Irrigação</h1><p>Entre com sua conta individual para consultar o histórico compartilhado.</p>{% if error %}<div class="alert error">{{ error }}</div>{% endif %}<form method="post" action="/login"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><label>Usuário</label><input name="username" autocomplete="username" required><label>Senha</label><input name="password" type="password" autocomplete="current-password" required><button type="submit">Entrar</button></form><p class="note">As contas devem ser criadas pelo responsável pela implantação. Não há conta padrão embutida.</p></div>{% endblock %}
+{% extends "base.html" %}
+{% block content %}
+<div class="login-wrap">
+    <h1>Acesso ao Agente de Irrigação</h1>
+    <p>Entre com sua conta para acessar as funcionalidades do sistema.</p>
+
+    {% if error %}
+    <div class="alert error">{{ error }}</div>
+    {% endif %}
+
+    <form method="post" action="/login">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <label>Usuário</label>
+        <input name="username" autocomplete="username" required>
+        <label>Senha</label>
+        <input name="password" type="password"
+               autocomplete="current-password" required>
+        <button type="submit">Entrar</button>
+    </form>
+
+    <div class="visitor-access">
+        <p>Deseja apenas consultar os dados?</p>
+        <form method="post" action="/visitante">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <button type="submit">Entrar como visitante</button>
+        </form>
+        <p class="note">
+            O visitante pode consultar o dashboard e o histórico,
+            mas não pode inserir ou alterar dados.
+        </p>
+    </div>
+
+    <p class="note">
+        As contas devem ser criadas pelo responsável pela implantação.
+        Não há conta padrão embutida.
+    </p>
+</div>
+{% endblock %}

@@ -39,11 +39,35 @@ templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 @app.on_event("startup")
 def startup(): init_db()
 def template(name, request, **kwargs):
-    if "csrf_token" not in request.session: request.session["csrf_token"] = secrets.token_urlsafe(32)
-    return templates.TemplateResponse(name, {"request": request, "app_name": APP_NAME, "user": current_user(request), "csrf_token": request.session["csrf_token"], **kwargs})
-def auth_redirect(request):
-    if not current_user(request): return RedirectResponse("/login", status_code=303)
-    return None
+    if "csrf_token" not in request.session:
+        request.session["csrf_token"] = secrets.token_urlsafe(32)
+
+    user = current_user(request)
+
+    if user is None and request.session.get("visitor") is True:
+        user = {
+            "username": "Visitante",
+            "is_visitor": True,
+        }
+
+    return templates.TemplateResponse(
+        name,
+        {
+            "request": request,
+            "app_name": APP_NAME,
+            "user": user,
+            "csrf_token": request.session["csrf_token"],
+            **kwargs,
+        },
+    )
+
+
+def auth_redirect(request, allow_visitor=True):
+    if current_user(request):
+        return None
+    if allow_visitor and request.session.get("visitor") is True:
+        return None
+    return RedirectResponse("/login", status_code=303)
 @app.get("/login", response_class=HTMLResponse)
 def login_get(request: Request):
     if current_user(request): return RedirectResponse("/", status_code=303)
@@ -61,6 +85,17 @@ def login_post(request: Request, username: str = Form(...), password: str = Form
 def logout(request: Request, csrf_token: str = Form(...)):
     ensure_csrf(request, csrf_token); request.session.clear()
     return RedirectResponse("/login", status_code=303)
+
+@app.post("/visitante")
+def entrar_visitante(
+    request: Request,
+    csrf_token: str = Form(...),
+):
+    ensure_csrf(request, csrf_token)
+    request.session.clear()
+    request.session["visitor"] = True
+    request.session["csrf_token"] = secrets.token_urlsafe(32)
+    return RedirectResponse("/", status_code=303)
 
 @app.get("/", response_class=HTMLResponse)
 def dashboard(request: Request):
@@ -323,7 +358,9 @@ def api_drenagem(request: Request):
         ]
 @app.get("/importar", response_class=HTMLResponse)
 def importar_get(request: Request):
-    if auth_redirect(request): return auth_redirect(request)
+    redirect = auth_redirect(request, allow_visitor=False)
+    if redirect:
+        return redirect
     return template("importar.html", request, message=None, error=None, conflicts=None, pending_id=None)
 def parse_filename(filename):
     return bool(re.fullmatch(r"Dados_meteorologicos_\d{4}-\d{2}-\d{2}\.xlsx", filename, flags=re.IGNORECASE))
