@@ -28,7 +28,7 @@ COOKIE_SECURE = (
 # ============================================================
 
 ALTITUDE_M = float(os.getenv("ALTITUDE_M", "220"))
-ALTURA_VENTO_M = float(os.getenv("ALTURA_VENTO_M", "2"))
+ALTURA_VENTO_M = float(os.getenv("ALTURA_VENTO_M", "6"))
 
 # ============================================================
 # PARÂMETROS DO SISTEMA DE IRRIGAÇÃO
