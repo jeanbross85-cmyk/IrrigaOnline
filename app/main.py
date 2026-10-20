@@ -507,8 +507,9 @@ def concluir_importacao_pendente(pending_id, user_id):
         leitura = pending.drenagem_leitura_percentual
 
         if leitura is not None:
-            u = float(leitura)
-            theta = 0.0008 * (u ** 2) - 0.0155 * u + 0.1203
+            u = float(leitura) * 100
+            theta_percentual = 0.08266 * (u ** 2) - 1.2349 * u + 7.1153
+            theta = theta_percentual / 100
 
             db.add(
                 DrainageRecord(

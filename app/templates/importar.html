@@ -71,22 +71,24 @@
     >
 
     <label for="drenagem_leitura_percentual">
-        Leitura de umidade (%)
+        Leitura de umidade (decimal)
     </label>
    <input
     type="number"
     id="drenagem_leitura_percentual"
     name="drenagem_leitura_percentual"
     min="0"
-    max="100"
+    max="1"
     step="any"
-    placeholder="Ex.: 25"
+    placeholder="Ex.: 0.25"
     value="{{ suggested_reading if suggested_reading is defined and suggested_reading is not none else '' }}"
 >
 
     <p>
-        A leitura é opcional. Se preenchida, será convertida para
-        umidade volumétrica pela equação de calibração.
+        A leitura é opcional. Informe o valor decimal fornecido pelo sensor,
+    por exemplo 0.25. O sistema converterá a leitura para porcentagem
+    antes de aplicar a equação de calibração e armazenará a umidade
+    volumétrica em m³/m³.
     </p>
 
     <button type="submit">Continuar importação</button>
