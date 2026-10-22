@@ -34,6 +34,45 @@
     <div id="drainage" style="grid-column: 1 / -1;"></div>
 </div>
 
+
+<h2>Histórico de eventos de irrigação feita sob estimação</h2>
+<p>Eventos observados em campo, separados dos tempos recomendados. Valores indisponíveis são apresentados como traço.</p>
+
+<div style="overflow-x:auto;">
+<table>
+    <thead>
+        <tr>
+            <th>Data</th>
+            <th>Tempo realizado (min)</th>
+            <th>Volume (L/planta)</th>
+            <th>Lâmina bruta (mm)</th>
+            <th>Área (m²/planta)</th>
+            <th>Vazão (L/h/planta)</th>
+            <th>ETo (mm)</th>
+            <th>Status</th>
+            <th>Observação</th>
+        </tr>
+    </thead>
+    <tbody>
+    {% for evento in irrigation_events %}
+        <tr>
+            <td>{{ evento.data.strftime('%d/%m/%Y') }}</td>
+            <td>{{ "%.0f"|format(evento.tempo_irrigacao_min) }}</td>
+            <td>{% if evento.volume_planta_l is not none %}{{ "%.3f"|format(evento.volume_planta_l) }}{% else %}—{% endif %}</td>
+            <td>{% if evento.lamina_bruta_mm is not none %}{{ "%.2f"|format(evento.lamina_bruta_mm) }}{% else %}—{% endif %}</td>
+            <td>{% if evento.area_por_planta_m2 is not none %}{{ "%.2f"|format(evento.area_por_planta_m2) }}{% else %}—{% endif %}</td>
+            <td>{% if evento.vazao_planta_l_h is not none %}{{ "%.3f"|format(evento.vazao_planta_l_h) }}{% else %}—{% endif %}</td>
+            <td>{% if evento.eto_mm is not none %}{{ "%.2f"|format(evento.eto_mm) }}{% else %}—{% endif %}</td>
+            <td>{{ evento.status_dados }}</td>
+            <td>{{ evento.observacao or "—" }}</td>
+        </tr>
+    {% else %}
+        <tr><td colspan="9">Nenhuma irrigação observada cadastrada.</td></tr>
+    {% endfor %}
+    </tbody>
+</table>
+</div>
+
 <h2>Comparação dos cenários de irrigação</h2>
 <p>
     Os resultados com Kl consideram o fator de área molhada configurado.

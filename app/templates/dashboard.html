@@ -113,6 +113,54 @@
 
 <hr>
 
+
+<h2>Irrigação efetivamente realizada</h2>
+<p>
+    Registros observados em campo, separados dos tempos recomendados
+    pelos métodos de cálculo. A ETo não foi informada para estes eventos.
+</p>
+
+<div style="overflow-x:auto;">
+    <table>
+        <thead>
+            <tr>
+                <th>Data</th>
+                <th>Tempo realizado (min)</th>
+                <th>Volume (L/planta)</th>
+                <th>Lâmina bruta (mm)</th>
+                <th>Status</th>
+                <th>ETo (mm)</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for evento in irrigation_events %}
+            <tr>
+                <td>{{ evento.data.strftime('%d/%m/%Y') }}</td>
+                <td>{{ "%.0f"|format(evento.tempo_irrigacao_min) }}</td>
+                <td>
+                    {% if evento.volume_planta_l is not none %}
+                        {{ "%.3f"|format(evento.volume_planta_l) }}
+                    {% else %}—{% endif %}
+                </td>
+                <td>
+                    {% if evento.lamina_bruta_mm is not none %}
+                        {{ "%.2f"|format(evento.lamina_bruta_mm) }}
+                    {% else %}—{% endif %}
+                </td>
+                <td>{{ evento.status_dados }}</td>
+                <td>
+                    {% if evento.eto_mm is not none %}
+                        {{ "%.2f"|format(evento.eto_mm) }}
+                    {% else %}—{% endif %}
+                </td>
+            </tr>
+        {% else %}
+            <tr><td colspan="6">Nenhuma irriga??o observada cadastrada.</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+
 <h2>Drenagem e umidade na zona drenante</h2>
 <p>
     A umidade volumétrica é calculada pela equação de calibração
