@@ -16,7 +16,7 @@ class DailyRecord(Base):
     arquivo_estacao = Column(String, nullable=False)
     estadio = Column(String, nullable=False)
     kc = Column(Float, nullable=False)
-    eto_mm = Column(Float, nullable=False)
+    eto_mm = Column(Float, nullable=True)
     etc_mm = Column(Float, nullable=False)
 
     # Resultados de irrigação com e sem Kl
@@ -101,3 +101,18 @@ class DrainageRecord(Base):
         nullable=False,
         default=datetime.utcnow
     )
+
+
+class IrrigationEvent(Base):
+    __tablename__ = "irrigation_events"
+
+    data = Column(Date, primary_key=True)
+    tempo_irrigacao_min = Column(Float, nullable=False)
+    volume_planta_l = Column(Float, nullable=True)
+    lamina_bruta_mm = Column(Float, nullable=True)
+    area_por_planta_m2 = Column(Float, nullable=True)
+    vazao_planta_l_h = Column(Float, nullable=True)
+    eto_mm = Column(Float, nullable=True)
+    status_dados = Column(String(40), nullable=False)
+    observacao = Column(Text, nullable=True)
+

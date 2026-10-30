@@ -21,6 +21,7 @@ from .models import (
     AuditLog,
     PendingImport,
     DrainageRecord,
+    IrrigationEvent,
 )
 from .security import current_user, require_user, verify_password, ensure_csrf
 from .importer import read_meteorological_xlsx
@@ -120,21 +121,49 @@ def dashboard(request: Request):
             )
         )
 
+        irrigation_events = list(
+            db.scalars(
+                select(IrrigationEvent)
+                .order_by(desc(IrrigationEvent.data))
+                .limit(30)
+            )
+        )
+
     return template(
         "dashboard.html",
         request,
         records=records,
         latest=records[0] if records else None,
         drainage_records=drainage_records,
+        irrigation_events=irrigation_events,
         latest_drainage=(
             drainage_records[0] if drainage_records else None
         ),
     )
 @app.get("/historico", response_class=HTMLResponse)
 def historico(request: Request):
-    if auth_redirect(request): return auth_redirect(request)
-    with SessionLocal() as db: records = list(db.scalars(select(DailyRecord).order_by(desc(DailyRecord.data))))
-    return template("historico.html", request, records=records)
+    redirect = auth_redirect(request)
+    if redirect:
+        return redirect
+
+    with SessionLocal() as db:
+        records = list(
+            db.scalars(
+                select(DailyRecord).order_by(desc(DailyRecord.data))
+            )
+        )
+        irrigation_events = list(
+            db.scalars(
+                select(IrrigationEvent).order_by(desc(IrrigationEvent.data))
+            )
+        )
+
+    return template(
+        "historico.html",
+        request,
+        records=records,
+        irrigation_events=irrigation_events,
+    )
 
 @app.get("/historico/exportar.xlsx")
 def exportar_historico_excel(request: Request):
