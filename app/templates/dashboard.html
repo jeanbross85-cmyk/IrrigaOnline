@@ -119,6 +119,54 @@
     Registros observados em campo, separados dos tempos recomendados
     pelos métodos de cálculo. A ETo não foi informada para estes eventos.
 </p>
+{% if user and not user.is_visitor %}
+<div class="card" style="margin-bottom: 20px;">
+    <h3>Registrar irrigação realizada</h3>
+
+    <form action="/irrigacao/cadastrar" method="post">
+        <input
+            type="hidden"
+            name="csrf_token"
+            value="{{ csrf_token }}"
+        >
+
+        <label for="data-irrigacao">Data da irrigação</label>
+        <input
+            type="date"
+            id="data-irrigacao"
+            name="data"
+            required
+        >
+
+        <label for="tempo-irrigacao">
+            Tempo de irrigação (minutos)
+        </label>
+        <input
+            type="number"
+            id="tempo-irrigacao"
+            name="tempo_irrigacao_min"
+            min="0.1"
+            step="0.1"
+            placeholder="Ex.: 40"
+            required
+        >
+
+        <p>
+            Vazão: 4,005 L/h por planta.
+            Área de campo: 0,50 m² por planta.
+            O volume e a lâmina serão calculados automaticamente.
+        </p>
+
+        <button type="submit">Registrar irrigação</button>
+    </form>
+</div>
+{% endif %}
+
+{% if irrigation_message %}
+<div class="card" style="margin-bottom: 20px;">
+    <p>{{ irrigation_message }}</p>
+</div>
+{% endif %}
 
 <div style="overflow-x:auto;">
     <table>
@@ -166,6 +214,56 @@
     A umidade volumétrica é calculada pela equação de calibração
     informada, com resultado em m³/m³.
 </p>
+
+{% if drainage_message %}
+<div class="card" style="margin-bottom: 20px;">
+    <p>{{ drainage_message }}</p>
+</div>
+{% endif %}
+
+{% if user and not user.is_visitor %}
+<div class="card" style="margin-bottom: 20px;">
+    <h3>Adicionar leitura de drenagem</h3>
+
+    <form action="/drenagem/cadastrar" method="post">
+        <input
+            type="hidden"
+            name="csrf_token"
+            value="{{ csrf_token }}"
+        >
+
+        <label for="data-drenagem">Data da leitura</label>
+        <input
+            type="date"
+            id="data-drenagem"
+            name="data"
+            required
+        >
+
+        <label for="leitura-drenagem">
+            Leitura do sensor (escala decimal)
+        </label>
+        <input
+            type="number"
+            id="leitura-drenagem"
+            name="leitura_sensor"
+            min="0"
+            max="1"
+            step="0.0001"
+            placeholder="Ex.: 0,42"
+            required
+        >
+
+        <p>
+            Informe a leitura em escala decimal. Por exemplo,
+            0,42 representa 42%. A umidade volumétrica será
+            calculada automaticamente pela equação de calibração.
+        </p>
+
+        <button type="submit">Adicionar leitura</button>
+    </form>
+</div>
+{% endif %}
 
 {% if latest_drainage %}
 <div class="cards">
@@ -232,6 +330,49 @@ fetch('/api/historico')
             valor === null || valor === undefined || valor === ''
                 ? null
                 : Number(valor);
+// Registros de irrigação efetivamente realizada
+const irrigacoesRealizadas = [
+    {% for evento in irrigation_events|reverse %}
+    {
+        data: "{{ evento.data.isoformat() }}",
+        tempo: {{ evento.tempo_irrigacao_min }}
+    }{% if not loop.last %},{% endif %}
+    {% endfor %}
+];
+
+// Relaciona cada data ao seu tempo de irrigação observado
+const temposRealizadosPorData = new Map(
+    irrigacoesRealizadas.map(evento => [
+        evento.data,
+        Number(evento.tempo)
+    ])
+);
+
+// Relaciona cada data aos dados meteorológicos calculados
+const rowsPorData = new Map(
+    rows.map(registro => [registro.data, registro])
+);
+
+// Mantém as datas calculadas e acrescenta datas com irrigação manual
+const datasTempo = [...new Set([
+    ...rows.map(registro => registro.data),
+    ...irrigacoesRealizadas.map(evento => evento.data)
+])].sort();
+
+// Prioriza o tempo observado; caso contrário, utiliza o cálculo
+const tempoDaSerie = (data, campo) => {
+    const tempoObservado = temposRealizadosPorData.get(data);
+
+    if (tempoObservado !== undefined) {
+        return tempoObservado;
+    }
+
+    const registro = rowsPorData.get(data);
+
+    return registro
+        ? numeroOuNulo(registro[campo])
+        : null;
+};
 
         // Gráfico 1: lâminas de irrigação
         Plotly.newPlot('laminaChart', [
@@ -270,49 +411,55 @@ fetch('/api/historico')
         }, { responsive: true });
 
         // Gráfico 2: tempo de irrigação
-        Plotly.newPlot('irrigationTimeChart', [
-            {
-                x: datas,
-                y: rows.map(v => numeroOuNulo(v.tempo_irrigacao_com_kl_min)),
-                name: 'Com Kl (0,32)',
-                mode: 'lines+markers',
-                connectgaps: false,
-                line: { width: 3 },
-                marker: { size: 7 }
-            },
-            {
-                x: datas,
-                y: rows.map(v => numeroOuNulo(v.tempo_irrigacao_sem_kl_min)),
-                name: 'Sem Kl',
-                mode: 'lines+markers',
-                connectgaps: false,
-                line: { width: 3 },
-                marker: { size: 7 }
-            },
-            {
-                x: datas,
-                y: rows.map(v => numeroOuNulo(v.tempo_irrigacao_campo_min)),
-                name: 'Sem Kl — área de campo (0,50 m²/planta)',
-                mode: 'lines+markers',
-                connectgaps: false,
-                line: { width: 3 },
-                marker: { size: 7 }
-            }
-        ], {
-            title: 'Tempo estimado de irrigação por dia',
-            xaxis: {
-                title: 'Data',
-                type: 'date',
-                tickformat: '%d/%m'
-            },
-            yaxis: {
-                title: 'Tempo (minutos)',
-                rangemode: 'tozero'
-            },
-            legend: { orientation: 'h' },
-            margin: { t: 60, b: 65, l: 65, r: 25 },
-            autosize: true
-        }, { responsive: true });
+Plotly.newPlot('irrigationTimeChart', [
+    {
+        x: datasTempo,
+        y: datasTempo.map(data =>
+            tempoDaSerie(data, 'tempo_irrigacao_com_kl_min')
+        ),
+        name: 'Com Kl (0,32)',
+        mode: 'lines+markers',
+        connectgaps: false,
+        line: { width: 3 },
+        marker: { size: 7 }
+    },
+    {
+        x: datasTempo,
+        y: datasTempo.map(data =>
+            tempoDaSerie(data, 'tempo_irrigacao_sem_kl_min')
+        ),
+        name: 'Sem Kl',
+        mode: 'lines+markers',
+        connectgaps: false,
+        line: { width: 3 },
+        marker: { size: 7 }
+    },
+    {
+        x: datasTempo,
+        y: datasTempo.map(data =>
+            tempoDaSerie(data, 'tempo_irrigacao_campo_min')
+        ),
+        name: 'Sem Kl — área de campo (0,50 m²/planta)',
+        mode: 'lines+markers',
+        connectgaps: false,
+        line: { width: 3 },
+        marker: { size: 7 }
+    }
+], {
+    title: 'Tempo estimado de irrigação por dia',
+    xaxis: {
+        title: 'Data',
+        type: 'date',
+        tickformat: '%d/%m'
+    },
+    yaxis: {
+        title: 'Tempo (minutos)',
+        rangemode: 'tozero'
+    },
+    legend: { orientation: 'h' },
+    margin: { t: 60, b: 65, l: 65, r: 25 },
+    autosize: true
+}, { responsive: true });
     })
     .catch(error => console.error(
         'Erro nos gráficos de irrigação:', error
