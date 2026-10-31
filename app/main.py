@@ -1,3 +1,4 @@
+from math import isfinite
 from pathlib import Path
 from datetime import datetime
 from io import BytesIO
@@ -130,16 +131,107 @@ def dashboard(request: Request):
         )
 
     return template(
-        "dashboard.html",
-        request,
-        records=records,
-        latest=records[0] if records else None,
-        drainage_records=drainage_records,
-        irrigation_events=irrigation_events,
-        latest_drainage=(
-            drainage_records[0] if drainage_records else None
-        ),
+    "dashboard.html",
+    request,
+    irrigation_message=request.session.pop("irrigation_message", None),
+    drainage_message=request.session.pop("drainage_message", None),
+    records=records,
+    latest=records[0] if records else None,
+    drainage_records=drainage_records,
+    irrigation_events=irrigation_events,
+    latest_drainage=(
+        drainage_records[0] if drainage_records else None
+    ),
+)
+@app.post("/irrigacao/cadastrar")
+def cadastrar_irrigacao(
+    request: Request,
+    data: str = Form(...),
+    tempo_irrigacao_min: float = Form(...),
+    csrf_token: str = Form(...),
+):
+    # Somente usuários autenticados podem cadastrar.
+    redirect = auth_redirect(request, allow_visitor=False)
+    if redirect:
+        return redirect
+
+    ensure_csrf(request, csrf_token)
+
+    # Validar data.
+    try:
+        data_evento = datetime.strptime(data, "%Y-%m-%d").date()
+    except ValueError:
+        request.session["irrigation_message"] = (
+            "Data inválida. Verifique a data informada."
+        )
+        return RedirectResponse("/", status_code=303)
+
+    # Validar duração.
+    if (
+        not isfinite(tempo_irrigacao_min)
+        or tempo_irrigacao_min <= 0
+    ):
+        request.session["irrigation_message"] = (
+            "Informe um tempo de irrigação maior que zero."
+        )
+        return RedirectResponse("/", status_code=303)
+
+    # Parâmetros físicos do sistema.
+    vazao_planta_l_h = 4.005
+    area_por_planta_m2 = 0.50
+
+    # Cálculos da irrigação observada.
+    volume_planta_l = (
+        tempo_irrigacao_min * vazao_planta_l_h / 60
     )
+
+    lamina_bruta_mm = (
+        volume_planta_l / area_por_planta_m2
+    )
+
+    with SessionLocal() as db:
+        # Não permitir duplicidade de data.
+        existente = db.get(IrrigationEvent, data_evento)
+
+        if existente:
+            request.session["irrigation_message"] = (
+                "Já existe um registro de irrigação para essa data. "
+                "Nenhum dado foi alterado."
+            )
+            return RedirectResponse("/", status_code=303)
+
+        evento = IrrigationEvent(
+            data=data_evento,
+            tempo_irrigacao_min=tempo_irrigacao_min,
+            volume_planta_l=volume_planta_l,
+            lamina_bruta_mm=lamina_bruta_mm,
+            area_por_planta_m2=area_por_planta_m2,
+            vazao_planta_l_h=vazao_planta_l_h,
+            eto_mm=None,
+            status_dados="OBSERVADO",
+            observacao="Irrigação registrada manualmente.",
+        )
+
+        db.add(evento)
+
+        try:
+            db.commit()
+        except IntegrityError:
+            db.rollback()
+            request.session["irrigation_message"] = (
+                "Já existe um registro para essa data. "
+                "Nenhum registro foi sobrescrito."
+            )
+            return RedirectResponse("/", status_code=303)
+
+    request.session["irrigation_message"] = (
+        f"Irrigação de {tempo_irrigacao_min:g} minutos "
+        f"cadastrada com sucesso. "
+        f"Volume: {volume_planta_l:.3f} L/planta; "
+        f"lâmina: {lamina_bruta_mm:.2f} mm."
+    )
+
+    return RedirectResponse("/", status_code=303)
 @app.get("/historico", response_class=HTMLResponse)
 def historico(request: Request):
     redirect = auth_redirect(request)
@@ -164,6 +256,113 @@ def historico(request: Request):
         records=records,
         irrigation_events=irrigation_events,
     )
+
+@app.post("/drenagem/cadastrar")
+def cadastrar_drenagem(
+    request: Request,
+    data: str = Form(...),
+    leitura_sensor: str = Form(...),
+    csrf_token: str = Form(...),
+):
+    # Somente usuários autenticados podem cadastrar.
+    redirect = auth_redirect(request, allow_visitor=False)
+    if redirect:
+        return redirect
+
+    ensure_csrf(request, csrf_token)
+    user = current_user(request)
+
+    # Validar data.
+    try:
+        data_medicao = datetime.strptime(
+            data, "%Y-%m-%d"
+        ).date()
+    except (TypeError, ValueError):
+        request.session["drainage_message"] = (
+            "Data inválida. Verifique a data informada."
+        )
+        return RedirectResponse("/", status_code=303)
+
+    # Validar leitura do sensor.
+    try:
+        leitura_decimal = float(
+            leitura_sensor.strip().replace(",", ".")
+        )
+    except (AttributeError, ValueError):
+        request.session["drainage_message"] = (
+            "Informe uma leitura numérica válida."
+        )
+        return RedirectResponse("/", status_code=303)
+
+    if (
+        not isfinite(leitura_decimal)
+        or not 0 <= leitura_decimal <= 1
+    ):
+        request.session["drainage_message"] = (
+            "A leitura deve estar entre 0 e 1. "
+            "Exemplo: informe 0,42 para representar 42%."
+        )
+        return RedirectResponse("/", status_code=303)
+
+    # Converter escala decimal para percentual.
+    u = leitura_decimal * 100
+
+    # Equação de calibração já utilizada na importação.
+    theta_percentual = (
+        0.08266 * (u ** 2)
+        - 1.2349 * u
+        + 7.1153
+    )
+
+    # Converter percentual para m³/m³.
+    theta = theta_percentual / 100
+
+    with SessionLocal() as db:
+
+        # Impedir duplicidade de data.
+        existente = db.scalar(
+            select(DrainageRecord.id)
+            .where(DrainageRecord.data == data_medicao)
+            .limit(1)
+        )
+
+        if existente is not None:
+            request.session["drainage_message"] = (
+                "Já existe uma medição de drenagem para essa data. "
+                "Nenhum registro foi alterado."
+            )
+            return RedirectResponse("/", status_code=303)
+
+        registro = DrainageRecord(
+            data=data_medicao,
+            leitura_percentual=u,
+            umidade_volumetrica=theta,
+            arquivo_origem="Cadastro manual",
+            usuario_id=user["id"],
+        )
+
+        db.add(registro)
+
+        try:
+            db.commit()
+
+        except IntegrityError:
+            db.rollback()
+
+            request.session["drainage_message"] = (
+                "Já existe uma medição para essa data. "
+                "Nenhum registro foi sobrescrito."
+            )
+            return RedirectResponse("/", status_code=303)
+
+    request.session["drainage_message"] = (
+        f"Leitura de drenagem de "
+        f"{data_medicao.strftime('%d/%m/%Y')} cadastrada. "
+        f"Leitura: {u:.2f}%; "
+        f"umidade volumétrica: {theta:.4f} m³/m³."
+    )
+
+    return RedirectResponse("/", status_code=303)
 
 @app.get("/historico/exportar.xlsx")
 def exportar_historico_excel(request: Request):
@@ -984,3 +1183,4 @@ def auditoria(request: Request):
     if redirect:return redirect
     with SessionLocal() as db: logs=list(db.scalars(select(AuditLog).order_by(desc(AuditLog.alterado_em)).limit(300)))
     return template("auditoria.html",request,logs=logs)
+
